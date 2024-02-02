@@ -1,4 +1,4 @@
-# Memorystore for LangChain
+# Memorystore for Redis for LangChain
 
 *Description*
 
@@ -30,13 +30,13 @@ dependencies.
 pip install virtualenv
 virtualenv <your-env>
 source <your-env>/bin/activate
-<your-env>/bin/pip install langchain-google-redis-query
+<your-env>/bin/pip install langchain-google-memorystore-redis
 ```
 
 ## Usage
 
 ```python
-from langchain_google_redis_query import MemorystoreVectorstore, MemorystoreLoader, MemorystoreChatMessageHistory
+from langchain_google_memorystore_redis import MemorystoreVectorstore, MemorystoreLoader, MemorystoreChatMessageHistory
 ```
 
 ## Contributing

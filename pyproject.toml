@@ -1,5 +1,5 @@
 [project]
-name = "langchain-redis-query"
+name = "langchain-google-memorystore-redis"
 version = "0.0.1"
 description = "LangChain integrations for Google Cloud Memorystore"
 readme = "README.md"
@@ -10,10 +10,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/googleapis/langchain-redis-query-python"
-Repository = "https://github.com/googleapis/langchain-redis-query-python.git"
-"Bug Tracker" = "https://github.com/googleapis/langchain-redis-query-python/issues"
-Changelog = "https://github.com/googleapis/langchain-redis-query-python/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/googleapis/langchain-google-memorystore-redis-python"
+Repository = "https://github.com/googleapis/langchain-google-memorystore-redis-python.git"
+"Bug Tracker" = "https://github.com/googleapis/langchain-google-memorystore-redis-python/issues"
+Changelog = "https://github.com/googleapis/langchain-google-memorystore-redis-python/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 test = [
@@ -29,12 +29,12 @@ test = [
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.black]
+target-version = ['py38']
+
 [tool.isort]
 profile = "black"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = 3.8
 warn_unused_configs = true
-exclude = [
-    "owlbot.py"
-]

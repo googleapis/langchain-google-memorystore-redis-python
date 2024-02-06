@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from langchain_google_memorystore_redis.redis_chat_message_history import MemorystoreChatMessageHistory
+from langchain_google_memorystore_redis.chat_message_history import MemorystoreChatMessageHistory
 
 __all__ = ["MemorystoreChatMessageHistory"]

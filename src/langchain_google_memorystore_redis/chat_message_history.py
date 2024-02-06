@@ -47,24 +47,32 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         self.key = session_id
         self.ttl = ttl
 
+        all_elements = self.redis.lrange(self.key, 0, -1)
+        self.history = messages_from_dict(
+            [json.loads(e.decode("utf-8")) for e in all_elements]
+        )
+
     def __del__(self):
         self.redis.close()
 
     @property
     def messages(self) -> List[BaseMessage]:
         """Retrieve all messages chronologically stored in this session."""
-        all_elements = self.redis.lrange(self.key, 0, -1)
-        messages = messages_from_dict(
-            [json.loads(e.decode("utf-8")) for e in all_elements]
-        )
-        return messages
+        if self.redis.ttl(self.key) == -2:
+          # From https://redis.io/commands/ttl, a non-existing or expired key
+          # returns -2 for the TTL command.
+          self.history = []
+        return self.history
 
     def add_message(self, message: BaseMessage) -> None:
         """Append one message to this session."""
-        self.redis.rpush(self.key, json.dumps(message_to_dict(message)))
+        m = json.dumps(message_to_dict(message))
+        self.history.append(m)
+        self.redis.rpush(self.key, m)
         if self.ttl:
             self.redis.expire(self.key, self.ttl)
 
     def clear(self) -> None:
         """Clear all messages in this session."""
+        self.history = []
         self.redis.delete(self.key)

@@ -66,8 +66,9 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
 
     def add_message(self, message: BaseMessage) -> None:
         """Append one message to this session."""
-        self.history.append(message)
-        self.redis.rpush(self.key, json.dumps(message_to_dict(message)))
+        m = json.dumps(message_to_dict(message))
+        self.history.append(m)
+        self.redis.rpush(self.key, m)
         if self.ttl:
             self.redis.expire(self.key, self.ttl)
 

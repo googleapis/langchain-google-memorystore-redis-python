@@ -43,17 +43,14 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
                 recent message is added.
         """
 
-        self.redis = client
-        self.key = session_id
-        self.ttl = ttl
-
-    def __del__(self):
-        self.redis.close()
+        self._redis = client
+        self._key = session_id
+        self._ttl = ttl
 
     @property
     def messages(self) -> List[BaseMessage]:
         """Retrieve all messages chronologically stored in this session."""
-        all_elements = self.redis.lrange(self.key, 0, -1)
+        all_elements = self._redis.lrange(self._key, 0, -1)
         messages = messages_from_dict(
             [json.loads(e.decode("utf-8")) for e in all_elements]
         )
@@ -61,10 +58,10 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
 
     def add_message(self, message: BaseMessage) -> None:
         """Append one message to this session."""
-        self.redis.rpush(self.key, json.dumps(message_to_dict(message)))
-        if self.ttl:
-            self.redis.expire(self.key, self.ttl)
+        self._redis.rpush(self._key, json.dumps(message_to_dict(message)))
+        if self._ttl:
+            self._redis.expire(self._key, self._ttl)
 
     def clear(self) -> None:
         """Clear all messages in this session."""
-        self.redis.delete(self.key)
+        self._redis.delete(self._key)

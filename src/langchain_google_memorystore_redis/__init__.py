@@ -11,4 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from langchain_google_memorystore_redis.chat_message_history import MemorystoreChatMessageHistory
 from .vector_store import FLATConfig, HNSWConfig, RedisVectorStore
+
+__all__ = ["MemorystoreChatMessageHistory"]

@@ -73,7 +73,7 @@ class IndexConfig(ABC):
             data_type (str, optional): Defines the data type of the elements within
                 the vector being indexed, such as "FLOAT32" for 32-bit floating-point
                 numbers. This parameter is crucial for ensuring that the index
-                accommodates the vector data appropriately. Defaults to "FLOAT32".
+                accommodates the vector data appropriately.
 
         """
         self.name = name
@@ -95,7 +95,7 @@ class VectorIndexConfig(IndexConfig):
         type: str,
         distance_strategy: DistanceStrategy,
         vector_size: int,
-        data_type: str,
+        data_type: str = "FLOAT32",
     ):
         """
         Initializes the VectorIndexConfig object.
@@ -113,9 +113,9 @@ class VectorIndexConfig(IndexConfig):
                 influencing how search results are ranked and returned.
             vector_size (int): The dimensionality of the vectors that will be stored
                 and indexed. All vectors must conform to this specified size.
-            data_type (str, optional): The data type of the vector elements (e.g., "float32").
+            data_type (str, optional): The data type of the vector elements (e.g., "FLOAT32").
                 This specifies the precision and format of the vector data, affecting storage
-                requirements and possibly search performance. Defaults to "float32".
+                requirements and possibly search performance. Defaults to "FLOAT32".
         """
         if distance_strategy not in self.SUPPORTED_DISTANCE_STRATEGIES:
             supported_strategies = ", ".join(
@@ -287,7 +287,7 @@ class RedisVectorStore(VectorStore):
                 "An 'embedding_service' must be provided to initialize RedisVectorStore"
             )
 
-        self.client = client
+        self._client = client
         self.index_name = index_name
         self.embedding_service = embedding_service
         self.key_prefix = self.get_key_prefix(index_name, key_prefix)
@@ -338,7 +338,7 @@ class RedisVectorStore(VectorStore):
         # for FT.INFO in the client library.
 
     @staticmethod
-    def drop_index(client: redis.Redis, index_name: str, index_only: bool = False):
+    def drop_index(client: redis.Redis, index_name: str, index_only: bool = True):
         """
         Drops an index from the Redis database. Optionally, it can also delete
         the documents associated with the index.
@@ -350,7 +350,7 @@ class RedisVectorStore(VectorStore):
                 match the name of the existing index in the Redis database.
             index_only (bool, optional): A flag indicating whether to drop only the index
                 structure (True) or to also delete the documents associated with the index (False).
-                Defaults to False, implying that both the index and its documents will be deleted.
+                Defaults to True, implying that only the index will be deleted.
 
         Raises:
             redis.RedisError: If any Redis-specific error occurs during the operation. This
@@ -358,8 +358,11 @@ class RedisVectorStore(VectorStore):
                 the command to drop the index. Callers should handle these exceptions to
                 manage error scenarios gracefully.
         """
+        if (index_only == False) :
+            raise ValueError("Not supported")
+
         command = (
-            f"FT.DROPINDEX {index_name} {'KEEPDOCS' if index_only else ''}".strip()
+            f"FT.DROPINDEX {index_name} {'DD' if not index_only else ''}".strip()
         )
         client.execute_command(command)
 
@@ -408,7 +411,7 @@ class RedisVectorStore(VectorStore):
         embeddings = self.embedding_service.embed_documents(list(texts))
 
         ids = []
-        pipeline = self.client.pipeline(transaction=False)
+        pipeline = self._client.pipeline(transaction=False)
         for i, bundle in enumerate(
             zip_longest(keys_or_ids, texts, embeddings, metadatas), start=1
         ):
@@ -437,7 +440,7 @@ class RedisVectorStore(VectorStore):
             ids.append(key)
 
             # Ensure to execute any remaining commands in the pipeline after the loop
-            if i % batch_size != 0:
+            if i % batch_size == 0:
                 pipeline.execute()
 
         # Final execution to catch any remaining items in the pipeline
@@ -511,13 +514,13 @@ class RedisVectorStore(VectorStore):
     def delete(self, ids: Optional[List[str]] = None, **kwargs: Any) -> Optional[bool]:
         if not ids:  # Check if ids list is empty or None
             logger.info("No IDs provided for deletion.")
-            return None  # Or False, depending on intended behavior when ids is empty or None
+            return False
 
         try:
-            self.client.delete(*ids)
+            self._client.delete(*ids)
             logger.info("Entries deleted.")
             return True
-        except Exception as e:  # It's better to catch specific exceptions
+        except Exception as e:
             logger.error(f"Failed to delete entries: {e}")
             return False
 
@@ -545,7 +548,7 @@ class RedisVectorStore(VectorStore):
             2,
         ]
 
-        initial_results = self.client.execute_command(*query_args)
+        initial_results = self._client.execute_command(*query_args)
 
         logger.info(f'{int((len(initial_results)-1)/2)} documents returned by Redis')
 

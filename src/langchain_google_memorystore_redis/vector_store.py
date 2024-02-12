@@ -15,6 +15,7 @@
 import json
 import logging
 import operator
+import pprint
 import re
 import uuid
 from abc import ABC
@@ -37,7 +38,7 @@ from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 handler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
@@ -149,8 +150,8 @@ class HNSWConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name: str,
-        vector_size: int,
+        field_name = None,
+        vector_size: int = 128,
         distance_strategy: DistanceStrategy = DistanceStrategy.COSINE,
         initial_cap: int = 10000,
         m: int = 16,
@@ -184,6 +185,8 @@ class HNSWConfig(VectorIndexConfig):
                 queries, balancing between search speed and accuracy. Defaults to 10.
 
         """
+        if field_name is None:
+            field_name = RedisVectorStore.DEFAULT_VECTOR_FIELD
         super().__init__(
             name, field_name, "HNSW", distance_strategy, vector_size, "FLOAT32"
         )
@@ -201,8 +204,8 @@ class FLATConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name: str,
-        vector_size: int,
+        field_name = None,
+        vector_size: int = 128,
         distance_strategy: DistanceStrategy = DistanceStrategy.COSINE,
     ):
         """
@@ -221,6 +224,8 @@ class FLATConfig(VectorIndexConfig):
                 search operations. Defaults to `DistanceStrategy.COSINE`, which
                 measures the cosine similarity between vectors.
         """
+        if field_name is None:
+            field_name = RedisVectorStore.DEFAULT_VECTOR_FIELD
         super().__init__(
             name, field_name, "FLAT", distance_strategy, vector_size, "FLOAT32"
         )
@@ -267,14 +272,32 @@ class RedisVectorStore(VectorStore):
                 when adding new documents to the store and when retrieving or searching
                 documents based on their vector embeddings. Defaults to 'vector'.
         """
+        if client == None:
+            raise ValueError(
+                "A Redis 'client' must be provided to initialize RedisVectorStore"
+            )
+
+        if index_name == None:
+            raise ValueError(
+                "A 'index_name' must be provided to initialize RedisVectorStore"
+            )
+
+        if embedding_service == None:
+            raise ValueError(
+                "An 'embedding_service' must be provided to initialize RedisVectorStore"
+            )
+
         self.client = client
         self.index_name = index_name
         self.embedding_service = embedding_service
-        self.key_prefix = key_prefix + ":" if key_prefix is not None else ""
+        self.key_prefix = self.get_key_prefix(index_name, key_prefix)
         self.content_field = content_field
         self.vector_field = vector_field
 
-    # Helper function to check if a string is JSON parsable
+    @staticmethod
+    def get_key_prefix(index_name: str, key_prefix: Optional[str] = None):
+        return key_prefix + ":" if key_prefix is not None else index_name + ":"
+
     @staticmethod
     def _is_json_parsable(s: str) -> bool:
         try:
@@ -293,12 +316,9 @@ class RedisVectorStore(VectorStore):
         if not isinstance(index_config, HNSWConfig):
             raise ValueError("index_config must be an instance of HNSWConfig")
 
-        # Use the index name if no key_prefix is provided
-        key_prefix = key_prefix + ":" if key_prefix is not None else index_config.name
-
         # Preparing the command string to avoid long lines
         command = (
-            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {key_prefix} "
+            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name, key_prefix)} "
             f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
             f"6 TYPE {index_config.data_type} DIM {index_config.vector_size} "
             f"DISTANCE_METRIC {index_config.distance_metric}"
@@ -423,6 +443,8 @@ class RedisVectorStore(VectorStore):
         # Final execution to catch any remaining items in the pipeline
         pipeline.execute()
 
+        logger.info(f"{len(ids)} documents ingested into Redis.")
+
         return ids
 
     @classmethod
@@ -524,6 +546,8 @@ class RedisVectorStore(VectorStore):
         ]
 
         initial_results = self.client.execute_command(*query_args)
+
+        logger.info(f'{int((len(initial_results)-1)/2)} documents returned by Redis')
 
         # Process the results
         final_results: List[Tuple[Document, float, List[float]]] = []

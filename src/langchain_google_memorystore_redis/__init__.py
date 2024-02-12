@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .chat_message_history import MemorystoreChatMessageHistory
-from .vector_store import FLATConfig, HNSWConfig, RedisVectorStore
+from .vector_store import DistanceStrategy, FLATConfig, HNSWConfig, RedisVectorStore
 
-__all__ = ["MemorystoreChatMessageHistory"]
+__all__ = [
+    "MemorystoreChatMessageHistory",
+    "DistanceStrategy",
+    "FLATConfig",
+    "HNSWConfig",
+    "RedisVectorStore"
+]

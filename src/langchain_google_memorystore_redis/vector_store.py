@@ -100,7 +100,7 @@ class VectorIndexConfig(IndexConfig):
         type: str,
         distance_strategy: DistanceStrategy,
         vector_size: int,
-        data_type: str = "FLOAT32",
+        data_type: str = DEFAULT_DATA_TYPE
     ):
         """
         Initializes the VectorIndexConfig object.
@@ -120,7 +120,7 @@ class VectorIndexConfig(IndexConfig):
                 and indexed. All vectors must conform to this specified size.
             data_type (str, optional): The data type of the vector elements (e.g., "FLOAT32").
                 This specifies the precision and format of the vector data, affecting storage
-                requirements and possibly search performance. Defaults to "FLOAT32".
+                requirements and possibly search performance. 
         """
         if distance_strategy not in self.SUPPORTED_DISTANCE_STRATEGIES:
             supported_strategies = ", ".join(
@@ -292,7 +292,7 @@ class RedisVectorStore(VectorStore):
 
     @staticmethod
     def get_key_prefix(index_name: str, key_prefix: Optional[str] = None):
-        return key_prefix + ":" if key_prefix is not None else index_name + ":"
+        return key_prefix if key_prefix is not None else index_name
 
     @staticmethod
     def _is_json_parsable(s: str) -> bool:

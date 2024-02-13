@@ -150,7 +150,7 @@ class HNSWConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name = None,
+        field_name=None,
         vector_size: int = 128,
         distance_strategy: DistanceStrategy = DistanceStrategy.COSINE,
         initial_cap: int = 10000,
@@ -204,7 +204,7 @@ class FLATConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name = None,
+        field_name=None,
         vector_size: int = 128,
         distance_strategy: DistanceStrategy = DistanceStrategy.COSINE,
     ):
@@ -358,12 +358,10 @@ class RedisVectorStore(VectorStore):
                 the command to drop the index. Callers should handle these exceptions to
                 manage error scenarios gracefully.
         """
-        if (index_only == False) :
+        if index_only == False:
             raise ValueError("Not supported")
 
-        command = (
-            f"FT.DROPINDEX {index_name} {'DD' if not index_only else ''}".strip()
-        )
+        command = f"FT.DROPINDEX {index_name} {'DD' if not index_only else ''}".strip()
         client.execute_command(command)
 
     def add_texts(
@@ -550,7 +548,7 @@ class RedisVectorStore(VectorStore):
 
         initial_results = self._client.execute_command(*query_args)
 
-        logger.info(f'{int((len(initial_results)-1)/2)} documents returned by Redis')
+        logger.info(f"{int((len(initial_results)-1)/2)} documents returned by Redis")
 
         # Process the results
         final_results: List[Tuple[Document, float, List[float]]] = []

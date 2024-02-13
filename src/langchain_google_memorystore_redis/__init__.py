@@ -19,5 +19,5 @@ __all__ = [
     "DistanceStrategy",
     "FLATConfig",
     "HNSWConfig",
-    "RedisVectorStore"
+    "RedisVectorStore",
 ]

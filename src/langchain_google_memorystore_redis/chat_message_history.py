@@ -53,7 +53,7 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         messages = messages_from_dict(
             [json.loads(self._encoder.decode(e)) for e in all_elements]
         )
-        return messages
+        return loaded_messages
 
     def add_message(self, message: BaseMessage) -> None:
         """Append one message to this session."""

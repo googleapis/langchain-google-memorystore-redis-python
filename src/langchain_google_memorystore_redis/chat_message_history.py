@@ -13,15 +13,11 @@
 # limitations under the License.
 
 import json
-import redis
 from typing import List, Optional
 
+import redis
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import (
-    BaseMessage,
-    message_to_dict,
-    messages_from_dict,
-)
+from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
 
 
 class MemorystoreChatMessageHistory(BaseChatMessageHistory):
@@ -46,13 +42,16 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         self._redis = client
         self._key = session_id
         self._ttl = ttl
+        self._encoder = client.connection_pool.get_encoder()
 
     @property
-    def messages(self) -> List[BaseMessage]:
+    def messages(self) -> List[BaseMessage]:  # type: ignore
         """Retrieve all messages chronologically stored in this session."""
         all_elements = self._redis.lrange(self._key, 0, -1)
+
+        assert isinstance(all_elements, list)
         messages = messages_from_dict(
-            [json.loads(e.decode("utf-8")) for e in all_elements]
+            [json.loads(self._encoder.decode(e)) for e in all_elements]
         )
         return messages
 

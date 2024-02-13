@@ -227,7 +227,6 @@ class FLATConfig(VectorIndexConfig):
 
 
 class RedisVectorStore(VectorStore):
-
     DEFAULT_CONTENT_FIELD = "page_content"
     DEFAULT_VECTOR_FIELD = "vector"
     DEFAULT_DATA_TYPE = "float32"
@@ -503,7 +502,6 @@ class RedisVectorStore(VectorStore):
     def _similarity_search_by_vector_with_score_and_embeddings(
         self, query_embedding: List[float], k: int = 4, **kwargs: Any
     ) -> List[Tuple[Document, float, List[float]]]:
-
         distance_threshold = kwargs.get(
             "distance_threshold", kwargs.get("score_threshold")
         )

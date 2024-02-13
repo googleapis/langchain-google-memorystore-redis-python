@@ -28,7 +28,7 @@ from langchain_google_memorystore_redis.doc_saver import MemorystoreDocumentSave
     [
         (
             '"content1"',
-            {"key1": '"doc1_value1"', "key2": '"doc1_value2"'},
+            {"key1": "doc1_value1", "key2": "doc1_value2"},
             "page_content",
             None,
         ),
@@ -90,10 +90,23 @@ def verify_stored_values(
     assert len(stored_value) == 1 + len(metadata_to_verify)
 
     for k, v in stored_value.items():
+        decoded_value = v.decode()
         if k == content_field.encode():
-            assert json.loads(v.decode()) == page_content
+            assert page_content == decoded_value
         else:
-            assert json.loads(v.decode()) == metadata_to_verify[k.decode()]
+            assert (
+                metadata_to_verify[k.decode()] == json.loads(decoded_value)
+                if is_json_parsable(decoded_value)
+                else decoded_value
+            )
+
+
+def is_json_parsable(s: str) -> bool:
+    try:
+        json.loads(s)
+        return True
+    except ValueError:
+        return False
 
 
 def get_env_var(key: str, desc: str) -> str:

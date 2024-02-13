@@ -14,7 +14,7 @@
 
 import json
 import uuid
-from typing import Optional, Sequence, Set
+from typing import Optional, Sequence, Set, Union
 
 import redis
 from langchain_core.documents.base import Document
@@ -35,11 +35,11 @@ class MemorystoreDocumentSaver:
         Args:
             client: A redis.Redis client object.
             content_field: The field of the hash that Redis uses to store the
-                page_content of the Document.
+              page_content of the Document.
             metadata_fields: The metadata fields of the Document that will be
-                stored in the Redis. If None, Redis stores all metadata fields.
+              stored in the Redis. If None, Redis stores all metadata fields.
             key_prefix: A prefix for the key used to store history for this
-                session.
+              session.
         """
 
         self._redis = client
@@ -57,9 +57,9 @@ class MemorystoreDocumentSaver:
         Args:
             documents: A List of Documents.
             ids: The keys in Redis used to store the Documents. If specified,
-                the length of the IDs must be the same as Documents. If not
-                specified, random UUIDs with prefix are generated to store
-                each Document.
+              the length of the IDs must be the same as Documents. If not
+              specified, random UUIDs with prefix are generated to store each
+              Document.
         """
         doc_ids = ids
         if not doc_ids:
@@ -69,7 +69,7 @@ class MemorystoreDocumentSaver:
 
         for i, doc in enumerate(documents):
             mapping = self._filter_metadata_by_fields(doc.metadata)
-            mapping.update({self._content_field: json.dumps(doc.page_content)})
+            mapping.update({self._content_field: doc.page_content})
 
             # Remove existing key in Redis to avoid reusing the doc ID.
             self._redis.delete(doc_ids[i])
@@ -84,7 +84,7 @@ class MemorystoreDocumentSaver:
         Returns:
             dict: A subset dict of the metadata that only contains the fields
                 specified in the initialization of the saver. The value of each
-                key is serialized by JSON.
+                metadata key is serialized by JSON if it is a dict.
         """
         if not metadata:
             return {}
@@ -93,5 +93,11 @@ class MemorystoreDocumentSaver:
             if self._metadata_fields
             else metadata.keys()
         )
-        filtered_metadata = {k: json.dumps(metadata[k]) for k in filtered_fields}
+        filtered_metadata = {
+            k: self._jsonify_if_dict(metadata[k]) for k in filtered_fields
+        }
         return filtered_metadata
+
+    @staticmethod
+    def _jsonify_if_dict(s: Union[str, dict]) -> str:
+        return s if isinstance(s, str) else json.dumps(s)

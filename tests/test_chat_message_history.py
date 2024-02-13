@@ -15,15 +15,15 @@
 
 import os
 import uuid
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_google_memorystore_redis import MemorystoreChatMessageHistory
+
 import redis
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+
+from langchain_google_memorystore_redis import MemorystoreChatMessageHistory
 
 
 def test_redis_multiple_sessions() -> None:
-    client = redis.from_url(
-        get_env_var("REDIS_URL", "URL of the Redis instance")
-    )
+    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
 
     session_id1 = uuid.uuid4().hex
     history1 = MemorystoreChatMessageHistory(

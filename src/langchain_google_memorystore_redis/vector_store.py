@@ -15,6 +15,7 @@
 import json
 import logging
 import operator
+import pprint
 import re
 import uuid
 from abc import ABC
@@ -37,11 +38,16 @@ from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 handler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+DEFAULT_CONTENT_FIELD = "page_content"
+DEFAULT_VECTOR_FIELD = "vector"
+DEFAULT_DATA_TYPE = "float32"
+DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE
 
 
 class IndexConfig(ABC):
@@ -72,7 +78,7 @@ class IndexConfig(ABC):
             data_type (str, optional): Defines the data type of the elements within
                 the vector being indexed, such as "FLOAT32" for 32-bit floating-point
                 numbers. This parameter is crucial for ensuring that the index
-                accommodates the vector data appropriately. Defaults to "FLOAT32".
+                accommodates the vector data appropriately.
 
         """
         self.name = name
@@ -94,7 +100,7 @@ class VectorIndexConfig(IndexConfig):
         type: str,
         distance_strategy: DistanceStrategy,
         vector_size: int,
-        data_type: str,
+        data_type: str = DEFAULT_DATA_TYPE,
     ):
         """
         Initializes the VectorIndexConfig object.
@@ -112,9 +118,9 @@ class VectorIndexConfig(IndexConfig):
                 influencing how search results are ranked and returned.
             vector_size (int): The dimensionality of the vectors that will be stored
                 and indexed. All vectors must conform to this specified size.
-            data_type (str, optional): The data type of the vector elements (e.g., "float32").
+            data_type (str, optional): The data type of the vector elements (e.g., "FLOAT32").
                 This specifies the precision and format of the vector data, affecting storage
-                requirements and possibly search performance. Defaults to "float32".
+                requirements and possibly search performance.
         """
         if distance_strategy not in self.SUPPORTED_DISTANCE_STRATEGIES:
             supported_strategies = ", ".join(
@@ -149,9 +155,9 @@ class HNSWConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name: str,
-        vector_size: int,
-        distance_strategy: DistanceStrategy = DistanceStrategy.COSINE,
+        field_name=None,
+        vector_size: int = 128,
+        distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
         initial_cap: int = 10000,
         m: int = 16,
         ef_construction: int = 200,
@@ -170,7 +176,7 @@ class HNSWConfig(VectorIndexConfig):
                 accommodate. All vectors must match this specified size.
             distance_strategy (DistanceStrategy): The metric used for calculating
                 distances or similarities between vectors, influencing how search results
-                are ranked. Defaults to `DistanceStrategy.COSINE`.
+                are ranked.
             initial_cap (int): Specifies the initial capacity of the index in terms of
                 the number of vectors it can hold, impacting the initial memory allocation.
                 Defaults to 10000.
@@ -184,6 +190,8 @@ class HNSWConfig(VectorIndexConfig):
                 queries, balancing between search speed and accuracy. Defaults to 10.
 
         """
+        if field_name is None:
+            field_name = DEFAULT_VECTOR_FIELD
         super().__init__(
             name, field_name, "HNSW", distance_strategy, vector_size, "FLOAT32"
         )
@@ -201,9 +209,9 @@ class FLATConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name: str,
-        vector_size: int,
-        distance_strategy: DistanceStrategy = DistanceStrategy.COSINE,
+        field_name=None,
+        vector_size: int = 128,
+        distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
     ):
         """
         Initializes the FLATConfig object.
@@ -218,25 +226,21 @@ class FLATConfig(VectorIndexConfig):
                 indexed. All vectors added to this index must conform to this size.
             distance_strategy (DistanceStrategy, optional): Determines the metric
                 used to calculate the distance or similarity between vectors during
-                search operations. Defaults to `DistanceStrategy.COSINE`, which
-                measures the cosine similarity between vectors.
+                search operations.
         """
+        if field_name is None:
+            field_name = DEFAULT_VECTOR_FIELD
         super().__init__(
             name, field_name, "FLAT", distance_strategy, vector_size, "FLOAT32"
         )
 
 
 class RedisVectorStore(VectorStore):
-    DEFAULT_CONTENT_FIELD = "page_content"
-    DEFAULT_VECTOR_FIELD = "vector"
-    DEFAULT_DATA_TYPE = "float32"
-
     def __init__(
         self,
         client: redis.Redis,
         index_name: str,
         embedding_service: Embeddings,
-        key_prefix: Optional[str] = None,
         content_field: str = DEFAULT_CONTENT_FIELD,
         vector_field: str = DEFAULT_VECTOR_FIELD,
     ):
@@ -254,10 +258,6 @@ class RedisVectorStore(VectorStore):
                 capable of generating vector embeddings from document content. This
                 service is utilized to convert text documents into vector representations
                 for storage and search.
-            key_prefix (Optional[str], optional): An optional prefix for Redis HASH keys
-                that are to be included in the vector index. This allows for selective
-                indexing of documents based on their keys. If None, all HASH keys in the
-                Redis database are considered for indexing. Defaults to None.
             content_field (str, optional): The field within the Redis HASH where document
                 content is stored. This field is read to obtain document text for
                 embedding during indexing operations. Defaults to 'page_content', which
@@ -267,14 +267,33 @@ class RedisVectorStore(VectorStore):
                 when adding new documents to the store and when retrieving or searching
                 documents based on their vector embeddings. Defaults to 'vector'.
         """
-        self.client = client
+        if client == None:
+            raise ValueError(
+                "A Redis 'client' must be provided to initialize RedisVectorStore"
+            )
+
+        if index_name == None:
+            raise ValueError(
+                "A 'index_name' must be provided to initialize RedisVectorStore"
+            )
+
+        if embedding_service == None:
+            raise ValueError(
+                "An 'embedding_service' must be provided to initialize RedisVectorStore"
+            )
+
+        self._client = client
         self.index_name = index_name
         self.embedding_service = embedding_service
-        self.key_prefix = key_prefix + ":" if key_prefix is not None else ""
+        self.key_prefix = self.get_key_prefix(index_name)
         self.content_field = content_field
         self.vector_field = vector_field
+        self.encoding = client.get_encoder().encoding
 
-    # Helper function to check if a string is JSON parsable
+    @staticmethod
+    def get_key_prefix(index_name: str, key_prefix: Optional[str] = None):
+        return key_prefix if key_prefix is not None else index_name
+
     @staticmethod
     def _is_json_parsable(s: str) -> bool:
         try:
@@ -284,21 +303,16 @@ class RedisVectorStore(VectorStore):
             return False
 
     @staticmethod
-    def init_index(
-        client: redis.Redis, index_config: IndexConfig, key_prefix: Optional[str] = None
-    ):
+    def init_index(client: redis.Redis, index_config: IndexConfig):
         """
         Initializes a named VectorStore index in Redis with specified configurations.
         """
         if not isinstance(index_config, HNSWConfig):
             raise ValueError("index_config must be an instance of HNSWConfig")
 
-        # Use the index name if no key_prefix is provided
-        key_prefix = key_prefix + ":" if key_prefix is not None else index_config.name
-
         # Preparing the command string to avoid long lines
         command = (
-            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {key_prefix} "
+            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name)} "
             f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
             f"6 TYPE {index_config.data_type} DIM {index_config.vector_size} "
             f"DISTANCE_METRIC {index_config.distance_metric}"
@@ -318,7 +332,7 @@ class RedisVectorStore(VectorStore):
         # for FT.INFO in the client library.
 
     @staticmethod
-    def drop_index(client: redis.Redis, index_name: str, index_only: bool = False):
+    def drop_index(client: redis.Redis, index_name: str, index_only: bool = True):
         """
         Drops an index from the Redis database. Optionally, it can also delete
         the documents associated with the index.
@@ -330,7 +344,7 @@ class RedisVectorStore(VectorStore):
                 match the name of the existing index in the Redis database.
             index_only (bool, optional): A flag indicating whether to drop only the index
                 structure (True) or to also delete the documents associated with the index (False).
-                Defaults to False, implying that both the index and its documents will be deleted.
+                Defaults to True, implying that only the index will be deleted.
 
         Raises:
             redis.RedisError: If any Redis-specific error occurs during the operation. This
@@ -338,9 +352,10 @@ class RedisVectorStore(VectorStore):
                 the command to drop the index. Callers should handle these exceptions to
                 manage error scenarios gracefully.
         """
-        command = (
-            f"FT.DROPINDEX {index_name} {'KEEPDOCS' if index_only else ''}".strip()
-        )
+        if index_only == False:
+            raise ValueError("Not supported")
+
+        command = f"FT.DROPINDEX {index_name} {'DD' if not index_only else ''}".strip()
         client.execute_command(command)
 
     def add_texts(
@@ -388,7 +403,7 @@ class RedisVectorStore(VectorStore):
         embeddings = self.embedding_service.embed_documents(list(texts))
 
         ids = []
-        pipeline = self.client.pipeline(transaction=False)
+        pipeline = self._client.pipeline(transaction=False)
         for i, bundle in enumerate(
             zip_longest(keys_or_ids, texts, embeddings, metadatas), start=1
         ):
@@ -399,7 +414,7 @@ class RedisVectorStore(VectorStore):
             mapping = {
                 self.content_field: text,
                 self.vector_field: np.array(embedding)
-                .astype(self.DEFAULT_DATA_TYPE)
+                .astype(DEFAULT_DATA_TYPE)
                 .tobytes(),
             }
 
@@ -417,11 +432,13 @@ class RedisVectorStore(VectorStore):
             ids.append(key)
 
             # Ensure to execute any remaining commands in the pipeline after the loop
-            if i % batch_size != 0:
+            if i % batch_size == 0:
                 pipeline.execute()
 
         # Final execution to catch any remaining items in the pipeline
         pipeline.execute()
+
+        logger.info(f"{len(ids)} documents ingested into Redis.")
 
         return ids
 
@@ -431,6 +448,8 @@ class RedisVectorStore(VectorStore):
         texts: List[str],
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
+        client=None,
+        index_name=None,
         **kwargs: Any,
     ) -> "RedisVectorStore":
         """
@@ -457,28 +476,22 @@ class RedisVectorStore(VectorStore):
                 that the method cannot proceed without a connection to a Redis database.
         """
 
-        if "client" not in kwargs:
+        if "client" == None:
             raise ValueError(
                 "A 'client' must be provided to initialize RedisVectorStore"
             )
 
-        if "index_name" not in kwargs:
+        if "index_name" == None:
             raise ValueError(
                 "A 'index_name' must be provided to initialize RedisVectorStore"
             )
-
-        kwargs_copy = kwargs.copy()
-
-        # Extract 'client' and remove it from kwargs to prevent passing it twice
-        client = kwargs_copy.pop("client")
-        index_name = kwargs_copy.pop("index_name")
 
         # Initialize RedisVectorStore instance
         instance = cls(
             client,
             index_name,
             embedding,
-            **kwargs_copy,
+            **kwargs,
         )
 
         # Add texts and their corresponding metadata to the instance
@@ -489,41 +502,67 @@ class RedisVectorStore(VectorStore):
     def delete(self, ids: Optional[List[str]] = None, **kwargs: Any) -> Optional[bool]:
         if not ids:  # Check if ids list is empty or None
             logger.info("No IDs provided for deletion.")
-            return None  # Or False, depending on intended behavior when ids is empty or None
+            return False
 
         try:
-            self.client.delete(*ids)
+            self._client.delete(*ids)
             logger.info("Entries deleted.")
             return True
-        except Exception as e:  # It's better to catch specific exceptions
+        except Exception as e:
             logger.error(f"Failed to delete entries: {e}")
             return False
 
     def _similarity_search_by_vector_with_score_and_embeddings(
         self, query_embedding: List[float], k: int = 4, **kwargs: Any
     ) -> List[Tuple[Document, float, List[float]]]:
+        """
+        Performs a similarity search by a vector with score and embeddings, offering
+        various customization options via keyword arguments.
+
+        Args:
+            query_embedding (List[float]): A list of floats representing the embedding
+                vector of the query for similarity search.
+            k (int, optional): The number of nearest neighbors to retrieve.  Defaults to 4.
+            **kwargs (Any): Additional keyword arguments allowing for customization of
+                the search operation. Key options include:
+                - 'distance_threshold' (float, optional): A threshold value for filtering
+                    results based on their distance or score.  If not specified directly,
+                    it may use 'score_threshold' if provided.
+                - 'distance_strategy' (str, optional): Strategy to apply when comparing
+                    distances or scores. Uses a default strategy if not specified.
+
+        Returns:
+            List[Tuple[Document, float, List[float]]]: A list of tuples, each containing
+            a Document object, its distance (score) from the query embedding, and its own
+            embedding vector. The Document object includes content and metadata.
+
+        Note:
+            - The function dynamically adjusts its behavior based on the presence and values
+                of keyword arguments. For instance, if a 'distance_threshold' is provided,
+                only results meeting this threshold are returned.
+        """
+
         distance_threshold = kwargs.get(
             "distance_threshold", kwargs.get("score_threshold")
         )
 
-        query_k = k
-        if distance_threshold is not None:
-            distance_strategy = kwargs.get("distance_strategy", DistanceStrategy.COSINE)
-            query_k *= 4  # Quadruple k if a distance threshold is specified
+        distance_strategy = kwargs.get("distance_strategy", DEFAULT_DISTANCE_STRATEGY)
 
         query_args = [
             "FT.SEARCH",
             self.index_name,
-            f"*=>[KNN {query_k} @{self.vector_field} $query_vector AS distance]",
+            f"*=>[KNN {k} @{self.vector_field} $query_vector AS distance]",
             "PARAMS",
             2,
             "query_vector",
-            np.array([query_embedding]).astype(self.DEFAULT_DATA_TYPE).tobytes(),
+            np.array([query_embedding]).astype(DEFAULT_DATA_TYPE).tobytes(),
             "DIALECT",
             2,
         ]
 
-        initial_results = self.client.execute_command(*query_args)
+        initial_results = self._client.execute_command(*query_args)
+
+        logger.info(f"{int((len(initial_results)-1)/2)} documents returned by Redis")
 
         # Process the results
         final_results: List[Tuple[Document, float, List[float]]] = []
@@ -537,23 +576,21 @@ class RedisVectorStore(VectorStore):
             distance = 0.0
             embedding: List[float] = []
             for j in range(0, len(initial_results[i]), 2):
-                key = initial_results[i][j].decode()
+                key = initial_results[i][j].decode(self.encoding)
                 value = initial_results[i][j + 1]
                 if key == self.content_field:
-                    page_content = value.decode()
+                    page_content = value.decode(self.encoding)
                 elif key == self.vector_field:
-                    embedding = np.frombuffer(
-                        value, dtype=self.DEFAULT_DATA_TYPE
-                    ).tolist()
+                    embedding = np.frombuffer(value, dtype=DEFAULT_DATA_TYPE).tolist()
                 elif key == "distance":
-                    distance = float(value.decode())
+                    distance = float(value.decode(self.encoding))
                 else:
                     if isinstance(value, bytes) and self._is_json_parsable(
-                        value.decode()
+                        value.decode(self.encoding)
                     ):
-                        metadata[key] = json.loads(value.decode())
+                        metadata[key] = json.loads(value.decode(self.encoding))
                     else:
-                        metadata[key] = value.decode()
+                        metadata[key] = value.decode(self.encoding)
 
             final_results.append(
                 (
@@ -574,7 +611,15 @@ class RedisVectorStore(VectorStore):
                 for doc, distance, embedding in final_results
                 if cmp(distance, distance_threshold)
             ]
-        return final_results[:k]
+
+        # Directly sort final_results based on distance, applying the determined sort order
+        final_results = sorted(
+            final_results,
+            key=lambda d: d[1],
+            reverse=distance_strategy == DistanceStrategy.MAX_INNER_PRODUCT,
+        )
+
+        return final_results
 
     def _similarity_search_by_vector_with_score(
         self, query_embedding: List[float], k: int = 4, **kwargs: Any

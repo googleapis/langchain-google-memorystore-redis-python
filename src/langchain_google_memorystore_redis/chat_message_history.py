@@ -50,7 +50,7 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         all_elements = self._redis.lrange(self._key, 0, -1)
 
         assert isinstance(all_elements, list)
-        messages = messages_from_dict(
+        loaded_messages = messages_from_dict(
             [json.loads(self._encoder.decode(e)) for e in all_elements]
         )
         return loaded_messages

@@ -241,7 +241,6 @@ class RedisVectorStore(VectorStore):
         client: redis.Redis,
         index_name: str,
         embedding_service: Embeddings,
-        key_prefix: Optional[str] = None,
         content_field: str = DEFAULT_CONTENT_FIELD,
         vector_field: str = DEFAULT_VECTOR_FIELD,
     ):
@@ -259,10 +258,6 @@ class RedisVectorStore(VectorStore):
                 capable of generating vector embeddings from document content. This
                 service is utilized to convert text documents into vector representations
                 for storage and search.
-            key_prefix (Optional[str], optional): An optional prefix for Redis HASH keys
-                that are to be included in the vector index. This allows for selective
-                indexing of documents based on their keys. If None, all HASH keys in the
-                Redis database are considered for indexing. Defaults to None.
             content_field (str, optional): The field within the Redis HASH where document
                 content is stored. This field is read to obtain document text for
                 embedding during indexing operations. Defaults to 'page_content', which
@@ -290,7 +285,7 @@ class RedisVectorStore(VectorStore):
         self._client = client
         self.index_name = index_name
         self.embedding_service = embedding_service
-        self.key_prefix = self.get_key_prefix(index_name, key_prefix)
+        self.key_prefix = self.get_key_prefix(index_name)
         self.content_field = content_field
         self.vector_field = vector_field
         self.encoding = client.get_encoder().encoding
@@ -308,9 +303,7 @@ class RedisVectorStore(VectorStore):
             return False
 
     @staticmethod
-    def init_index(
-        client: redis.Redis, index_config: IndexConfig, key_prefix: Optional[str] = None
-    ):
+    def init_index(client: redis.Redis, index_config: IndexConfig):
         """
         Initializes a named VectorStore index in Redis with specified configurations.
         """
@@ -319,7 +312,7 @@ class RedisVectorStore(VectorStore):
 
         # Preparing the command string to avoid long lines
         command = (
-            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name, key_prefix)} "
+            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name)} "
             f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
             f"6 TYPE {index_config.data_type} DIM {index_config.vector_size} "
             f"DISTANCE_METRIC {index_config.distance_metric}"

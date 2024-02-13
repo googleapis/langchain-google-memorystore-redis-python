@@ -455,8 +455,8 @@ class RedisVectorStore(VectorStore):
         texts: List[str],
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
-        client: redis.Redis = None,
-        index_name: str = None,
+        client = None,
+        index_name = None,
         **kwargs: Any,
     ) -> "RedisVectorStore":
         """

@@ -27,4 +27,4 @@ steps:
 
 options:
   pool:
-    name: 'projects/$PROJECT_ID/locations/us-central1/workerPools/redis'
+    name: '$_WORKER_POOL'

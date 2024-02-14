@@ -46,15 +46,18 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         self._redis = client
         self._key = session_id
         self._ttl = ttl
+        self._encoding = client.get_encoder().encoding
 
     @property
     def messages(self) -> List[BaseMessage]:
         """Retrieve all messages chronologically stored in this session."""
         all_elements = self._redis.lrange(self._key, 0, -1)
-        messages = messages_from_dict(
-            [json.loads(e.decode("utf-8")) for e in all_elements]
+
+        assert isinstance(all_elements, list)
+        loaded_messages = messages_from_dict(
+            [json.loads(e.decode(self._encoding)) for e in all_elements]
         )
-        return messages
+        return loaded_messages
 
     def add_message(self, message: BaseMessage) -> None:
         """Append one message to this session."""

@@ -131,6 +131,12 @@ class VectorIndexConfig(IndexConfig):
                 f"Supported strategies are: {supported_strategies}."
             )
 
+        if data_type.upper() != DEFAULT_DATA_TYPE:
+            raise ValueError(f"Unsupported data type: {data_type}")
+
+        if vector_size < 0:
+            raise ValueError(f"Unsupported vector size: {vector_size}")
+
         super().__init__(name, field_name, type)
         self.distance_strategy = distance_strategy
         self.vector_size = vector_size
@@ -155,7 +161,7 @@ class HNSWConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name=None,
+        field_name: str | None = None,
         vector_size: int = 128,
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
         initial_cap: int = 10000,
@@ -209,7 +215,7 @@ class FLATConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name=None,
+        field_name: str | None = None,
         vector_size: int = 128,
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
     ):
@@ -267,17 +273,17 @@ class RedisVectorStore(VectorStore):
                 when adding new documents to the store and when retrieving or searching
                 documents based on their vector embeddings. Defaults to 'vector'.
         """
-        if client == None:
+        if not isinstance(client, redis.Redis):
             raise ValueError(
                 "A Redis 'client' must be provided to initialize RedisVectorStore"
             )
 
-        if index_name == None:
+        if not isinstance(index_name, str):
             raise ValueError(
                 "A 'index_name' must be provided to initialize RedisVectorStore"
             )
 
-        if embedding_service == None:
+        if not isinstance(embedding_service, Embeddings):
             raise ValueError(
                 "An 'embedding_service' must be provided to initialize RedisVectorStore"
             )
@@ -362,6 +368,7 @@ class RedisVectorStore(VectorStore):
         self,
         texts: Iterable[str],
         metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
         batch_size: int = 1000,
         **kwargs: Any,
     ) -> List[str]:
@@ -375,6 +382,9 @@ class RedisVectorStore(VectorStore):
                 where each dictionary corresponds to a text document in the same order as the `texts` iterable.
                 Each metadata dictionary should contain key-value pairs representing the metadata attributes
                 for the associated text document.
+            ids (Optional[List[str]], optional): An optional list of unique identifiers for each text document.
+                If not provided, the system will generate unique identifiers for each document. If provided,
+                the length of this list should match the length of `texts`.
             batch_size (int, optional): The number of documents to process in a single batch operation.
                 This parameter helps manage memory and performance when adding a large number of documents.
                 Defaults to 1000.
@@ -388,27 +398,34 @@ class RedisVectorStore(VectorStore):
                 can be used to retrieve or reference the documents within the vector store.
 
         Note:
-            If both 'keys' (or 'ids') and 'metadatas' are provided, they must be of the same length as the
-            `texts` iterable to ensure each document is correctly associated with its metadata and identifier.
+            If both 'ids' and 'metadatas' are provided, they must be of the same length as the `texts`
+            iterable to ensure each document is correctly associated with its metadata and identifier.
         """
-        # Generate or extend keys/IDs for the documents
-        keys_or_ids = kwargs.get("keys", kwargs.get("ids", []))
-        # Ensure there's a unique ID for each text document
-        keys_or_ids = (keys_or_ids + [str(uuid.uuid4()) for _ in texts])[
-            len(keys_or_ids) :
-        ]
-        # Fallback for empty metadata
-        metadatas = metadatas if metadatas is not None else [{} for _ in texts]
+
+        # Generate ids if not provided
+        if ids is None:
+            ids = [str(uuid.uuid4()) for _ in texts]
+
+        # Check if both ids and metadatas are provided and have the same length
+        if ids is not None:
+            if len(ids) != len(texts):
+                raise ValueError("The length of 'ids' and 'texts' must be the same.")
+
+        if metadatas is not None:
+            if len(metadatas) != len(texts):
+                raise ValueError(
+                    "The length of 'metadatas' and 'texts' must be the same."
+                )
+
         # Generate embeddings for all documents
         embeddings = self.embedding_service.embed_documents(list(texts))
 
-        ids = []
         pipeline = self._client.pipeline(transaction=False)
         for i, bundle in enumerate(
-            zip_longest(keys_or_ids, texts, embeddings, metadatas), start=1
+            zip_longest(ids, texts, embeddings, metadatas), start=1
         ):
-            key, text, embedding, metadata = bundle
-            key = self.key_prefix + key
+            id, text, embedding, metadata = bundle
+            id = self.key_prefix + id
 
             # Initialize the mapping with content and vector fields
             mapping = {
@@ -428,8 +445,8 @@ class RedisVectorStore(VectorStore):
                     mapping[meta_key] = str(meta_value)
 
             # Add the document to the Redis hash
-            pipeline.hset(key, mapping=mapping)
-            ids.append(key)
+            pipeline.hset(id, mapping=mapping)
+            ids.append(id)
 
             # Ensure to execute any remaining commands in the pipeline after the loop
             if i % batch_size == 0:
@@ -448,8 +465,9 @@ class RedisVectorStore(VectorStore):
         texts: List[str],
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
-        client=None,
-        index_name=None,
+        ids: Optional[List[str]] = None,
+        client: redis.Redis | None = None,
+        index_name: str | None = None,
         **kwargs: Any,
     ) -> "RedisVectorStore":
         """
@@ -462,10 +480,17 @@ class RedisVectorStore(VectorStore):
             metadatas (Optional[List[dict]]): A list of dictionaries where each dictionary
                 contains metadata corresponding to each text document in `texts`. If provided,
                 the length of `metadatas` must match the length of `texts`.
-            **kwargs (Any): Additional keyword arguments that can include:
-                - 'client': A Redis client instance to be used by the RedisVectorStore.
-                - 'index_name': The name of the index to be created or used in Redis.
-                    If not provided, a default name may be used.
+            ids (Optional[List[str]], optional): An optional list of unique identifiers for
+                each text document.  If not provided, the system will generate unique identifiers
+                for each document. If provided, the length of this list should match the length
+                of `texts`.
+            client (redis.Redis): The Redis client instance to be used for database
+                operations, providing connectivity and command execution against the
+                Redis instance.
+            index_name (str): The name assigned to the vector index within Redis. This
+                name is used to identify the index for operations such as searching and
+                indexing.
+            **kwargs (Any): Additional keyword arguments
 
         Returns:
             RedisVectorStore: An instance of RedisVectorStore that has been populated with
@@ -476,12 +501,12 @@ class RedisVectorStore(VectorStore):
                 that the method cannot proceed without a connection to a Redis database.
         """
 
-        if "client" == None:
+        if not isinstance(client, redis.Redis):
             raise ValueError(
                 "A 'client' must be provided to initialize RedisVectorStore"
             )
 
-        if "index_name" == None:
+        if not isinstance(index_name, str):
             raise ValueError(
                 "A 'index_name' must be provided to initialize RedisVectorStore"
             )

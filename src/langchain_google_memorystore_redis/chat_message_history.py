@@ -42,7 +42,7 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         self._redis = client
         self._key = session_id
         self._ttl = ttl
-        self._encoder = client.connection_pool.get_encoder()
+        self._encoding = client.get_encoder().encoding
 
     @property
     def messages(self) -> List[BaseMessage]:  # type: ignore
@@ -51,7 +51,7 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
 
         assert isinstance(all_elements, list)
         loaded_messages = messages_from_dict(
-            [json.loads(self._encoder.decode(e)) for e in all_elements]
+            [json.loads(e.decode(self._encoding)) for e in all_elements]
         )
         return loaded_messages
 

@@ -393,10 +393,13 @@ class RedisVectorStore(VectorStore):
         """
         # Generate or extend keys/IDs for the documents
         keys_or_ids = kwargs.get("keys", kwargs.get("ids", []))
+        if keys_or_ids and len(keys_or_ids) != len(list(texts)):
+            raise ValueError(
+                "The length of keys or ids must match the length of the texts"
+            )
+        if not keys_or_ids:
+            keys_or_ids = [str(uuid.uuid4()) for _ in texts]
         # Ensure there's a unique ID for each text document
-        keys_or_ids = (keys_or_ids + [str(uuid.uuid4()) for _ in texts])[
-            len(keys_or_ids) :
-        ]
         # Fallback for empty metadata
         metadatas = metadatas if metadatas is not None else [{} for _ in texts]
         # Generate embeddings for all documents

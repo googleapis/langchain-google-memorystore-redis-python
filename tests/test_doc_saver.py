@@ -50,10 +50,11 @@ def test_doc_saver_add_documents_one_doc(
     page_content, metadata, content_field, metadata_fields
 ):
     client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
+    prefix = "prefix:"
 
     saver = MemorystoreDocumentSaver(
         client=client,
-        key_prefix="prefix:",
+        key_prefix=prefix,
         content_field=content_field,
         metadata_fields=metadata_fields,
     )
@@ -70,7 +71,7 @@ def test_doc_saver_add_documents_one_doc(
 
     verify_stored_values(
         client,
-        doc_id,
+        prefix + doc_id,
         page_content,
         content_field,
         metadata_to_verify,

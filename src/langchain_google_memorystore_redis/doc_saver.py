@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import json
-from typing import Optional, Sequence, Set, Union
 import uuid
+from typing import Optional, Sequence, Set, Union
 
-from langchain_core.documents.base import Document
 import redis
+from langchain_core.documents.base import Document
 
 
 class MemorystoreDocumentSaver:
@@ -66,13 +66,13 @@ class MemorystoreDocumentSaver:
                 operation. This parameter helps manage memory and performance
                 when adding a large number of documents. Defaults to 1000.
         """
-        doc_ids = ids
-        if not doc_ids:
-            doc_ids = [self._key_prefix + str(uuid.uuid4()) for _ in documents]
-        if len(documents) != len(doc_ids):
+        if ids and len(documents) != len(ids):
             raise ValueError("The length of documents must match the length of the IDs")
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than 0")
+
+        doc_ids = ids if ids else [str(uuid.uuid4()) for _ in documents]
+        doc_ids = [self._key_prefix + doc_id for doc_id in doc_ids]
 
         pipeline = self._redis.pipeline(transaction=False)
         for i, doc in enumerate(documents):

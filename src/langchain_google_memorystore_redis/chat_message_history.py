@@ -42,7 +42,7 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         self._redis = client
         self._key = session_id
         self._ttl = ttl
-        self._encoder = client.connection_pool.get_encoder()
+        self._encoder = client.get_encoder()
 
     @property
     def messages(self) -> List[BaseMessage]:  # type: ignore

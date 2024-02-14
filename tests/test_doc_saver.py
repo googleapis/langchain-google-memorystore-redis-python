@@ -53,8 +53,8 @@ def test_doc_saver_add_documents_one_doc(
 
     saver = MemorystoreDocumentSaver(
         client=client,
-        content_field=content_field,
         key_prefix="prefix:",
+        content_field=content_field,
         metadata_fields=metadata_fields,
     )
 

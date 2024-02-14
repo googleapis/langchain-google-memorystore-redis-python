@@ -35,10 +35,10 @@ class MemorystoreDocumentSaver:
         Args:
             client: A redis.Redis client object.
             content_field: The field of the hash that Redis uses to store the
-              page_content of the Document.
+                page_content of the Document.
             key_prefix: A prefix for the key to store Documents in Redis.
             metadata_fields: The metadata fields of the Document that will be
-              stored in the Redis. If None, Redis stores all metadata fields.
+                stored in the Redis. If None, Redis stores all metadata fields.
         """
 
         self._redis = client
@@ -58,9 +58,9 @@ class MemorystoreDocumentSaver:
         Args:
             documents: A List of Documents.
             ids: The list of suffixes for keys that Redis uses to store the
-              Documents. If specified, the length of the IDs must be the same
-              as Documents. If not specified, random UUIDs appended after
-              prefix are used to store each Document.
+                Documents. If specified, the length of the IDs must be the same
+                as Documents. If not specified, random UUIDs appended after
+                prefix are used to store each Document.
         """
         doc_ids = ids
         if not doc_ids:

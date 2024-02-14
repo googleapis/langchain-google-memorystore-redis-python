@@ -77,7 +77,7 @@ def test_doc_saver_add_documents_one_doc(
         metadata_to_verify,
     )
 
-    client.delete(doc_id)
+    client.delete(prefix + doc_id)
 
 
 def verify_stored_values(

@@ -398,7 +398,7 @@ class RedisVectorStore(VectorStore):
                 "The length of keys or ids must match the length of the texts"
             )
         if not keys_or_ids:
-            keys_or_ids = [self.key_prefix + str(uuid.uuid4()) for _ in texts]
+            keys_or_ids = [str(uuid.uuid4()) for _ in texts]
         # Ensure there's a unique ID for each text document
         # Fallback for empty metadata
         metadatas = metadatas if metadatas is not None else [{} for _ in texts]
@@ -411,6 +411,7 @@ class RedisVectorStore(VectorStore):
             zip_longest(keys_or_ids, texts, embeddings, metadatas), start=1
         ):
             key, text, embedding, metadata = bundle
+            key = self.key_prefix + key
 
             # Initialize the mapping with content and vector fields
             mapping = {

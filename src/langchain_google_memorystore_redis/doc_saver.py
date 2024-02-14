@@ -27,8 +27,8 @@ class MemorystoreDocumentSaver:
         self,
         client: redis.Redis,
         content_field: str,
+        key_prefix: str,
         metadata_fields: Optional[Set[str]] = None,
-        key_prefix: Optional[str] = None,
     ):
         """Initializes the Document Saver for Memorystore for Redis.
 
@@ -36,16 +36,17 @@ class MemorystoreDocumentSaver:
             client: A redis.Redis client object.
             content_field: The field of the hash that Redis uses to store the
               page_content of the Document.
+            key_prefix: A prefix for the key to store Documents in Redis.
             metadata_fields: The metadata fields of the Document that will be
               stored in the Redis. If None, Redis stores all metadata fields.
-            key_prefix: A prefix for the key used to store history for this
-              session.
         """
 
         self._redis = client
         self._content_field = content_field
         self._metadata_fields = metadata_fields
-        self._key_prefix = key_prefix if key_prefix else ""
+        if not key_prefix:
+            raise ValueError("key_prefix must not be empty")
+        self._key_prefix = key_prefix
 
     def add_documents(
         self,
@@ -56,10 +57,10 @@ class MemorystoreDocumentSaver:
 
         Args:
             documents: A List of Documents.
-            ids: The keys in Redis used to store the Documents. If specified,
-              the length of the IDs must be the same as Documents. If not
-              specified, random UUIDs with prefix are generated to store each
-              Document.
+            ids: The list of suffixes for keys that Redis uses to store the
+              Documents. If specified, the length of the IDs must be the same
+              as Documents. If not specified, random UUIDs appended after
+              prefix are used to store each Document.
         """
         doc_ids = ids
         if not doc_ids:

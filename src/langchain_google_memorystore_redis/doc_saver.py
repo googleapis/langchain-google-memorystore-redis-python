@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import json
-import uuid
 from typing import Optional, Sequence, Set, Union
+import uuid
 
-import redis
 from langchain_core.documents.base import Document
+import redis
 
 
 class MemorystoreDocumentSaver:
@@ -52,6 +52,7 @@ class MemorystoreDocumentSaver:
         self,
         documents: Sequence[Document],
         ids: Optional[Sequence[str]] = None,
+        batch_size: int = 1000,
     ) -> None:
         """Save a list of Documents to Redis.
 
@@ -61,20 +62,28 @@ class MemorystoreDocumentSaver:
                 Documents. If specified, the length of the IDs must be the same
                 as Documents. If not specified, random UUIDs appended after
                 prefix are used to store each Document.
+            batch_size: The number of documents to process in a single batch
+                operation. This parameter helps manage memory and performance
+                when adding a large number of documents. Defaults to 1000.
         """
         doc_ids = ids
         if not doc_ids:
             doc_ids = [self._key_prefix + str(uuid.uuid4()) for _ in documents]
         if len(documents) != len(doc_ids):
             raise ValueError("The length of documents must match the length of the IDs")
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0")
 
+        pipeline = self._redis.pipeline(transaction=False)
         for i, doc in enumerate(documents):
             mapping = self._filter_metadata_by_fields(doc.metadata)
             mapping.update({self._content_field: doc.page_content})
 
             # Remove existing key in Redis to avoid reusing the doc ID.
-            self._redis.delete(doc_ids[i])
-            self._redis.hset(doc_ids[i], mapping=mapping)
+            pipeline.delete(doc_ids[i])
+            pipeline.hset(doc_ids[i], mapping=mapping)
+            if (i + 1) % batch_size == 0 or i == len(documents) - 1:
+                pipeline.execute()
 
     def _filter_metadata_by_fields(self, metadata: Optional[dict]) -> dict:
         """Filter metadata fields to be stored in Redis.

@@ -53,10 +53,13 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         """Retrieve all messages chronologically stored in this session."""
         all_elements = self._redis.lrange(self._key, 0, -1)
 
-        assert isinstance(all_elements, list)
-        loaded_messages = messages_from_dict(
-            [json.loads(e.decode(self._encoding)) for e in all_elements]
-        )
+        loaded_messages = []
+        if isinstance(all_elements, list):
+            loaded_messages = messages_from_dict(
+                [json.loads(e.decode(self._encoding)) for e in all_elements]
+            )
+        else:
+            raise RuntimeError("redis-py returns result of unexpected type")
         return loaded_messages
 
     def add_message(self, message: BaseMessage) -> None:

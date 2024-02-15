@@ -20,7 +20,8 @@ import pytest
 import redis
 from langchain_core.documents.base import Document
 
-from langchain_google_memorystore_redis.doc_saver import MemorystoreDocumentSaver
+from langchain_google_memorystore_redis.document_loader import MemorystoreDocumentLoader
+from langchain_google_memorystore_redis.document_saver import MemorystoreDocumentSaver
 
 
 @pytest.mark.parametrize(
@@ -46,69 +47,75 @@ from langchain_google_memorystore_redis.doc_saver import MemorystoreDocumentSave
         ),
     ],
 )
-def test_doc_saver_add_documents_one_doc(
+def test_document_loader_one_doc(
     page_content, metadata, content_field, metadata_fields
 ):
     client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
-    prefix = "prefix:"
 
+    prefix = "prefix:"
     saver = MemorystoreDocumentSaver(
         client=client,
         key_prefix=prefix,
         content_field=content_field,
         metadata_fields=metadata_fields,
     )
-
     doc = Document.construct(page_content=page_content, metadata=metadata)
-    doc_id = "doc"
+    doc_id = "saved_doc"
     saver.add_documents([doc], [doc_id])
 
-    # Only verify the metadata keys given in the metadata_fields
-    metadata_to_verify = {}
-    for k, v in metadata.items():
-        if not metadata_fields or k in metadata_fields:
-            metadata_to_verify[k] = v
-
-    verify_stored_values(
-        client,
-        prefix + doc_id,
-        page_content,
-        content_field,
-        metadata_to_verify,
+    loader = MemorystoreDocumentLoader(
+        client=client,
+        key_prefix=prefix,
+        content_fields=set([content_field]),
+        metadata_fields=metadata_fields,
     )
-
+    loaded_docs = loader.load()
+    expected_doc = (
+        doc
+        if not metadata_fields
+        else Document.construct(
+            page_content=page_content,
+            metadata={k: metadata[k] for k in metadata_fields},
+        )
+    )
+    assert loaded_docs == [expected_doc]
     client.delete(prefix + doc_id)
 
 
-def verify_stored_values(
-    client: redis.Redis,
-    key: str,
-    page_content: str,
-    content_field: str,
-    metadata_to_verify: dict,
-):
-    stored_value = client.hgetall(key)
-    assert isinstance(stored_value, dict)
-    assert len(stored_value) == 1 + len(metadata_to_verify)
+def test_document_loader_multiple_docs():
+    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
 
-    for k, v in stored_value.items():
-        decoded_value = v.decode()
-        if k == content_field.encode():
-            assert page_content == decoded_value
-        else:
-            assert (
-                metadata_to_verify[k.decode()] == json.loads(decoded_value)
-                if is_json_parsable(decoded_value)
-                else decoded_value
+    prefix = "multidocs:"
+    # Clean up stored documents with the same prefix
+    for key in client.keys(f"{prefix}*"):
+        client.delete(key)
+
+    content_field = "page_content"
+    saver = MemorystoreDocumentSaver(
+        client=client,
+        key_prefix=prefix,
+        content_field=content_field,
+    )
+    docs = []
+    for content in range(10):
+        docs.append(
+            Document.construct(
+                page_content=f"{content}",
+                metadata={"metadata": f"meta: {content}"},
             )
+        )
 
+    saver.add_documents(docs)
 
-def is_json_parsable(s: str) -> bool:
-    try:
-        json.loads(s)
-        return True
-    except ValueError:
-        return False
+    loader = MemorystoreDocumentLoader(
+        client=client,
+        key_prefix=prefix,
+        content_fields=set([content_field]),
+    )
+    loaded_docs = []
+    for doc in loader.lazy_load():
+        loaded_docs.append(doc)
+    assert sorted(loaded_docs, key=lambda d: d.page_content) == docs
 
 
 def get_env_var(key: str, desc: str) -> str:

@@ -12,30 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC
-from enum import auto
-from enum import Enum
-from itertools import zip_longest
 import json
 import logging
 import operator
 import pprint
 import re
-from typing import Any, Iterable, List, Optional, Tuple
 import uuid
+from abc import ABC
+from enum import Enum, auto
+from itertools import zip_longest
+from typing import Any, Iterable, List, Optional, Tuple
 
-from langchain_community.vectorstores.utils import DistanceStrategy
-from langchain_community.vectorstores.utils import maximal_marginal_relevance
+import numpy as np
+import redis
+from langchain_community.vectorstores.utils import (
+    DistanceStrategy,
+    maximal_marginal_relevance,
+)
 from langchain_core._api import deprecated
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.utils import get_from_dict_or_env
-from langchain_core.vectorstores import VectorStore
-from langchain_core.vectorstores import VectorStoreRetriever
-import numpy as np
-import redis
-
+from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)
@@ -88,6 +87,7 @@ class IndexConfig(ABC):
 
 
 class VectorIndexConfig(IndexConfig):
+
     SUPPORTED_DISTANCE_STRATEGIES = {
         DistanceStrategy.COSINE,
         DistanceStrategy.EUCLIDEAN_DISTANCE,

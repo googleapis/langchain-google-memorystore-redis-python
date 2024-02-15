@@ -249,7 +249,7 @@ class RedisVectorStore(VectorStore):
         self,
         client: redis.Redis,
         index_name: str,
-        embedding_service: Embeddings,
+        embeddings: Embeddings,
         content_field: str = DEFAULT_CONTENT_FIELD,
         vector_field: str = DEFAULT_VECTOR_FIELD,
     ):
@@ -263,7 +263,7 @@ class RedisVectorStore(VectorStore):
             index_name (str): The name assigned to the vector index within Redis. This
                 name is used to identify the index for operations such as searching and
                 indexing.
-            embedding_service (Embeddings): An instance of an embedding service or model
+            embeddings (Embeddings): An instance of an embedding service or model
                 capable of generating vector embeddings from document content. This
                 service is utilized to convert text documents into vector representations
                 for storage and search.
@@ -286,14 +286,14 @@ class RedisVectorStore(VectorStore):
                 "A 'index_name' must be provided to initialize RedisVectorStore"
             )
 
-        if not isinstance(embedding_service, Embeddings):
+        if not isinstance(embeddings, Embeddings):
             raise ValueError(
-                "An 'embedding_service' must be provided to initialize RedisVectorStore"
+                "An 'embeddings' must be provided to initialize RedisVectorStore"
             )
 
         self._client = client
         self.index_name = index_name
-        self.embedding_service = embedding_service
+        self.embeddings_service = embeddings
         self.key_prefix = self.get_key_prefix(index_name)
         self.content_field = content_field
         self.vector_field = vector_field
@@ -419,12 +419,13 @@ class RedisVectorStore(VectorStore):
                 )
 
         # Generate embeddings for all documents
-        embeddings = self.embedding_service.embed_documents(list(texts))
+        embeddings = self.embeddings_service.embed_documents(list(texts))
 
+        new_ids = []
         pipeline = self._client.pipeline(transaction=False)
         for i, bundle in enumerate(zip(ids, texts, embeddings, metadatas), start=1):
             id, text, embedding, metadata = bundle
-            id = self.key_prefix + id
+            new_id = self.key_prefix + id
 
             # Initialize the mapping with content and vector fields
             mapping = {
@@ -444,8 +445,8 @@ class RedisVectorStore(VectorStore):
                     mapping[meta_key] = str(meta_value)
 
             # Add the document to the Redis hash
-            pipeline.hset(id, mapping=mapping)
-            ids.append(id)
+            pipeline.hset(new_id, mapping=mapping)
+            new_ids.append(new_id)
 
             # Ensure to execute any remaining commands in the pipeline after the loop
             if i % batch_size == 0:
@@ -456,7 +457,7 @@ class RedisVectorStore(VectorStore):
 
         logger.info(f"{len(ids)} documents ingested into Redis.")
 
-        return ids
+        return new_ids
 
     @classmethod
     def from_texts(
@@ -494,10 +495,6 @@ class RedisVectorStore(VectorStore):
         Returns:
             RedisVectorStore: An instance of RedisVectorStore that has been populated with
                 the embeddings of the provided texts, along with their associated metadata.
-
-        Raises:
-            ValueError: If a Redis client instance is not provided in `kwargs`, indicating
-                that the method cannot proceed without a connection to a Redis database.
         """
 
         if not isinstance(client, redis.Redis):
@@ -675,7 +672,7 @@ class RedisVectorStore(VectorStore):
                 documents most relevant to the query according to the similarity scores.
         """
         # Embed the query using the embedding function
-        query_embedding = self.embedding_service.embed_query(query)
+        query_embedding = self.embeddings_service.embed_query(query)
         return self._similarity_search_by_vector_with_score(
             query_embedding, k, **kwargs
         )
@@ -733,7 +730,7 @@ class RedisVectorStore(VectorStore):
                 the search backend.
         """
         # Embed the query using the embedding function
-        query_embedding = self.embedding_service.embed_query(query)
+        query_embedding = self.embeddings_service.embed_query(query)
         return self.similarity_search_by_vector(query_embedding, k, **kwargs)
 
     def max_marginal_relevance_search(
@@ -771,7 +768,7 @@ class RedisVectorStore(VectorStore):
             raise ValueError("lambda_mult must be between 0 and 1.")
 
         # Embed the query using a hypothetical method to convert text to vector.
-        query_embedding = self.embedding_service.embed_query(query)
+        query_embedding = self.embeddings_service.embed_query(query)
 
         # Fetch initial documents based on query embedding.
         initial_results = self._similarity_search_by_vector_with_score_and_embeddings(

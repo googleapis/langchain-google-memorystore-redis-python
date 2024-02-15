@@ -49,7 +49,9 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
         """Retrieve all messages chronologically stored in this session."""
         all_elements = self._redis.lrange(self._key, 0, -1)
 
-        assert isinstance(all_elements, list)
+        if not isinstance(all_elements, list):
+            raise TypeError("Expected a list from `lrange` but got a different type.")
+
         loaded_messages = messages_from_dict(
             [json.loads(e.decode(self._encoding)) for e in all_elements]
         )

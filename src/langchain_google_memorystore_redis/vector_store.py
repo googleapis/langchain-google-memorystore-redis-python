@@ -15,11 +15,9 @@
 import json
 import logging
 import operator
-import pprint
 import re
 import uuid
 from abc import ABC
-from enum import Enum, auto
 from itertools import zip_longest
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -29,12 +27,9 @@ from langchain_community.vectorstores.utils import (
     DistanceStrategy,
     maximal_marginal_relevance,
 )
-from langchain_core._api import deprecated
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_core.utils import get_from_dict_or_env
-from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
+from langchain_core.vectorstores import VectorStore
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)
@@ -46,7 +41,7 @@ logger.addHandler(handler)
 
 DEFAULT_CONTENT_FIELD = "page_content"
 DEFAULT_VECTOR_FIELD = "vector"
-DEFAULT_DATA_TYPE = "float32"
+DEFAULT_DATA_TYPE = "FLOAT32"
 DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE
 
 
@@ -131,6 +126,12 @@ class VectorIndexConfig(IndexConfig):
                 f"Supported strategies are: {supported_strategies}."
             )
 
+        if data_type.upper() != DEFAULT_DATA_TYPE:
+            raise ValueError(f"Unsupported data type: {data_type}")
+
+        if vector_size < 0:
+            raise ValueError(f"Unsupported vector size: {vector_size}")
+
         super().__init__(name, field_name, type)
         self.distance_strategy = distance_strategy
         self.vector_size = vector_size
@@ -148,6 +149,12 @@ class VectorIndexConfig(IndexConfig):
 
 
 class HNSWConfig(VectorIndexConfig):
+    DEFAULT_VECTOR_SIZE = 128
+    DEFAULT_INITIAL_CAP = 10000
+    DEFAULT_M = 16
+    DEFAULT_EF_CONSTRUCTION = 200
+    DEFAULT_EF_RUNTIME = 10
+
     """
     Configuration class for HNSW (Hierarchical Navigable Small World) vector indexes.
     """
@@ -155,13 +162,13 @@ class HNSWConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name=None,
-        vector_size: int = 128,
+        field_name: Optional[str] = None,
+        vector_size: int = DEFAULT_VECTOR_SIZE,
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
-        initial_cap: int = 10000,
-        m: int = 16,
-        ef_construction: int = 200,
-        ef_runtime: int = 10,
+        initial_cap: int = DEFAULT_INITIAL_CAP,
+        m: int = DEFAULT_M,
+        ef_construction: int = DEFAULT_EF_CONSTRUCTION,
+        ef_runtime: int = DEFAULT_EF_RUNTIME,
     ):
         """
         Initializes the HNSWConfig object.
@@ -179,21 +186,19 @@ class HNSWConfig(VectorIndexConfig):
                 are ranked.
             initial_cap (int): Specifies the initial capacity of the index in terms of
                 the number of vectors it can hold, impacting the initial memory allocation.
-                Defaults to 10000.
             m (int): Determines the maximum number of outgoing edges each node in the
                 index graph can have, directly affecting the graph's connectivity and
-                search performance. Defaults to 16.
+                search performance.
             ef_construction (int): Controls the size of the dynamic candidate list during
                 the construction of the index, influencing the index build time and quality.
-                Defaults to 200.
             ef_runtime (int): Sets the size of the dynamic candidate list during search
-                queries, balancing between search speed and accuracy. Defaults to 10.
+                queries, balancing between search speed and accuracy.
 
         """
         if field_name is None:
             field_name = DEFAULT_VECTOR_FIELD
         super().__init__(
-            name, field_name, "HNSW", distance_strategy, vector_size, "FLOAT32"
+            name, field_name, "HNSW", distance_strategy, vector_size, DEFAULT_DATA_TYPE
         )
         self.initial_cap = initial_cap
         self.m = m
@@ -206,11 +211,13 @@ class FLATConfig(VectorIndexConfig):
     Configuration class for FLAT vector indexes, utilizing brute-force search.
     """
 
+    DEFAULT_VECTOR_SIZE = 128
+
     def __init__(
         self,
         name: str,
-        field_name=None,
-        vector_size: int = 128,
+        field_name: Optional[str] = None,
+        vector_size: int = DEFAULT_VECTOR_SIZE,
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
     ):
         """
@@ -231,7 +238,7 @@ class FLATConfig(VectorIndexConfig):
         if field_name is None:
             field_name = DEFAULT_VECTOR_FIELD
         super().__init__(
-            name, field_name, "FLAT", distance_strategy, vector_size, "FLOAT32"
+            name, field_name, "FLAT", distance_strategy, vector_size, DEFAULT_DATA_TYPE
         )
 
 
@@ -240,7 +247,7 @@ class RedisVectorStore(VectorStore):
         self,
         client: redis.Redis,
         index_name: str,
-        embedding_service: Embeddings,
+        embeddings: Embeddings,
         content_field: str = DEFAULT_CONTENT_FIELD,
         vector_field: str = DEFAULT_VECTOR_FIELD,
     ):
@@ -254,7 +261,7 @@ class RedisVectorStore(VectorStore):
             index_name (str): The name assigned to the vector index within Redis. This
                 name is used to identify the index for operations such as searching and
                 indexing.
-            embedding_service (Embeddings): An instance of an embedding service or model
+            embeddings (Embeddings): An instance of an embedding service or model
                 capable of generating vector embeddings from document content. This
                 service is utilized to convert text documents into vector representations
                 for storage and search.
@@ -267,24 +274,24 @@ class RedisVectorStore(VectorStore):
                 when adding new documents to the store and when retrieving or searching
                 documents based on their vector embeddings. Defaults to 'vector'.
         """
-        if client == None:
+        if not isinstance(client, redis.Redis):
             raise ValueError(
                 "A Redis 'client' must be provided to initialize RedisVectorStore"
             )
 
-        if index_name == None:
+        if not isinstance(index_name, str):
             raise ValueError(
                 "A 'index_name' must be provided to initialize RedisVectorStore"
             )
 
-        if embedding_service == None:
+        if not isinstance(embeddings, Embeddings):
             raise ValueError(
-                "An 'embedding_service' must be provided to initialize RedisVectorStore"
+                "An 'embeddings' must be provided to initialize RedisVectorStore"
             )
 
         self._client = client
         self.index_name = index_name
-        self.embedding_service = embedding_service
+        self.embeddings_service = embeddings
         self.key_prefix = self.get_key_prefix(index_name)
         self.content_field = content_field
         self.vector_field = vector_field
@@ -362,7 +369,8 @@ class RedisVectorStore(VectorStore):
         self,
         texts: Iterable[str],
         metadatas: Optional[List[dict]] = None,
-        batch_size: int = 1000,
+        ids: Optional[List[str]] = None,
+        batch_size: Optional[int] = 1000,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -375,49 +383,57 @@ class RedisVectorStore(VectorStore):
                 where each dictionary corresponds to a text document in the same order as the `texts` iterable.
                 Each metadata dictionary should contain key-value pairs representing the metadata attributes
                 for the associated text document.
+            ids (Optional[List[str]], optional): An optional list of unique identifiers for each text document.
+                If not provided, the system will generate unique identifiers for each document. If provided,
+                the length of this list should match the length of `texts`.
             batch_size (int, optional): The number of documents to process in a single batch operation.
                 This parameter helps manage memory and performance when adding a large number of documents.
                 Defaults to 1000.
-            **kwargs (Any): Additional keyword arguments for extended functionality. This includes:
-                - 'keys' or 'ids' (List[str], optional): Custom identifiers for each document. If provided,
-                the length of this list should match the length of `texts`. If not provided, the system
-                will generate unique identifiers.
 
         Returns:
             List[str]: A list containing the unique keys or identifiers for each added document. These keys
                 can be used to retrieve or reference the documents within the vector store.
 
         Note:
-            If both 'keys' (or 'ids') and 'metadatas' are provided, they must be of the same length as the
-            `texts` iterable to ensure each document is correctly associated with its metadata and identifier.
+            If both 'ids' and 'metadatas' are provided, they must be of the same length as the `texts`
+            iterable to ensure each document is correctly associated with its metadata and identifier.
         """
-        # Generate or extend keys/IDs for the documents
-        keys_or_ids = kwargs.get("keys", kwargs.get("ids", []))
-        if keys_or_ids and len(keys_or_ids) != len(list(texts)):
-            raise ValueError(
-                "The length of keys or ids must match the length of the texts"
-            )
-        if not keys_or_ids:
-            keys_or_ids = [str(uuid.uuid4()) for _ in texts]
-        # Ensure there's a unique ID for each text document
-        # Fallback for empty metadata
-        metadatas = metadatas if metadatas is not None else [{} for _ in texts]
-        # Generate embeddings for all documents
-        embeddings = self.embedding_service.embed_documents(list(texts))
 
-        ids = []
+        # Generate ids if not provided
+        if ids is None:
+            ids = [str(uuid.uuid4()) for _ in texts]
+
+        # Check if both ids and metadatas are provided and have the same length
+        if ids is not None:
+            if len(ids) != len(list(texts)):
+                raise ValueError("The length of 'ids' and 'texts' must be the same.")
+
+        if not metadatas:
+            metadatas = [{} for _ in texts]
+
+        if metadatas is not None:
+            if len(metadatas) != len(list(texts)):
+                raise ValueError(
+                    "The length of 'metadatas' and 'texts' must be the same."
+                )
+
+        if not batch_size or batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0.")
+
+        # Generate embeddings for all documents
+        embeddings = self.embeddings_service.embed_documents(list(texts))
+
+        new_ids = []
         pipeline = self._client.pipeline(transaction=False)
-        for i, bundle in enumerate(
-            zip_longest(keys_or_ids, texts, embeddings, metadatas), start=1
-        ):
-            key, text, embedding, metadata = bundle
-            key = self.key_prefix + key
+        for i, bundle in enumerate(zip(ids, texts, embeddings, metadatas), start=1):
+            id, text, embedding, metadata = bundle
+            new_id = self.key_prefix + id
 
             # Initialize the mapping with content and vector fields
             mapping = {
                 self.content_field: text,
                 self.vector_field: np.array(embedding)
-                .astype(DEFAULT_DATA_TYPE)
+                .astype(DEFAULT_DATA_TYPE.lower())
                 .tobytes(),
             }
 
@@ -431,8 +447,8 @@ class RedisVectorStore(VectorStore):
                     mapping[meta_key] = str(meta_value)
 
             # Add the document to the Redis hash
-            pipeline.hset(key, mapping=mapping)
-            ids.append(key)
+            pipeline.hset(new_id, mapping=mapping)
+            new_ids.append(new_id)
 
             # Ensure to execute any remaining commands in the pipeline after the loop
             if i % batch_size == 0:
@@ -443,7 +459,7 @@ class RedisVectorStore(VectorStore):
 
         logger.info(f"{len(ids)} documents ingested into Redis.")
 
-        return ids
+        return new_ids
 
     @classmethod
     def from_texts(
@@ -451,8 +467,9 @@ class RedisVectorStore(VectorStore):
         texts: List[str],
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
-        client=None,
-        index_name=None,
+        ids: Optional[List[str]] = None,
+        client: Optional[redis.Redis] = None,
+        index_name: Optional[str] = None,
         **kwargs: Any,
     ) -> "RedisVectorStore":
         """
@@ -465,26 +482,29 @@ class RedisVectorStore(VectorStore):
             metadatas (Optional[List[dict]]): A list of dictionaries where each dictionary
                 contains metadata corresponding to each text document in `texts`. If provided,
                 the length of `metadatas` must match the length of `texts`.
-            **kwargs (Any): Additional keyword arguments that can include:
-                - 'client': A Redis client instance to be used by the RedisVectorStore.
-                - 'index_name': The name of the index to be created or used in Redis.
-                    If not provided, a default name may be used.
+            ids (Optional[List[str]], optional): An optional list of unique identifiers for
+                each text document.  If not provided, the system will generate unique identifiers
+                for each document. If provided, the length of this list should match the length
+                of `texts`.
+            client (redis.Redis): The Redis client instance to be used for database
+                operations, providing connectivity and command execution against the
+                Redis instance.
+            index_name (str): The name assigned to the vector index within Redis. This
+                name is used to identify the index for operations such as searching and
+                indexing.
+            **kwargs (Any): Additional keyword arguments
 
         Returns:
             RedisVectorStore: An instance of RedisVectorStore that has been populated with
                 the embeddings of the provided texts, along with their associated metadata.
-
-        Raises:
-            ValueError: If a Redis client instance is not provided in `kwargs`, indicating
-                that the method cannot proceed without a connection to a Redis database.
         """
 
-        if "client" == None:
+        if not isinstance(client, redis.Redis):
             raise ValueError(
                 "A 'client' must be provided to initialize RedisVectorStore"
             )
 
-        if "index_name" == None:
+        if not isinstance(index_name, str):
             raise ValueError(
                 "A 'index_name' must be provided to initialize RedisVectorStore"
             )
@@ -498,7 +518,7 @@ class RedisVectorStore(VectorStore):
         )
 
         # Add texts and their corresponding metadata to the instance
-        instance.add_texts(texts, metadatas)
+        instance.add_texts(texts, metadatas, ids)
 
         return instance
 
@@ -558,7 +578,7 @@ class RedisVectorStore(VectorStore):
             "PARAMS",
             2,
             "query_vector",
-            np.array([query_embedding]).astype(DEFAULT_DATA_TYPE).tobytes(),
+            np.array([query_embedding]).astype(DEFAULT_DATA_TYPE.lower()).tobytes(),
             "DIALECT",
             2,
         ]
@@ -584,7 +604,9 @@ class RedisVectorStore(VectorStore):
                 if key == self.content_field:
                     page_content = value.decode(self.encoding)
                 elif key == self.vector_field:
-                    embedding = np.frombuffer(value, dtype=DEFAULT_DATA_TYPE).tolist()
+                    embedding = np.frombuffer(
+                        value, dtype=DEFAULT_DATA_TYPE.lower()
+                    ).tolist()
                 elif key == "distance":
                     distance = float(value.decode(self.encoding))
                 else:
@@ -652,7 +674,7 @@ class RedisVectorStore(VectorStore):
                 documents most relevant to the query according to the similarity scores.
         """
         # Embed the query using the embedding function
-        query_embedding = self.embedding_service.embed_query(query)
+        query_embedding = self.embeddings_service.embed_query(query)
         return self._similarity_search_by_vector_with_score(
             query_embedding, k, **kwargs
         )
@@ -710,7 +732,7 @@ class RedisVectorStore(VectorStore):
                 the search backend.
         """
         # Embed the query using the embedding function
-        query_embedding = self.embedding_service.embed_query(query)
+        query_embedding = self.embeddings_service.embed_query(query)
         return self.similarity_search_by_vector(query_embedding, k, **kwargs)
 
     def max_marginal_relevance_search(
@@ -748,7 +770,7 @@ class RedisVectorStore(VectorStore):
             raise ValueError("lambda_mult must be between 0 and 1.")
 
         # Embed the query using a hypothetical method to convert text to vector.
-        query_embedding = self.embedding_service.embed_query(query)
+        query_embedding = self.embeddings_service.embed_query(query)
 
         # Fetch initial documents based on query embedding.
         initial_results = self._similarity_search_by_vector_with_score_and_embeddings(

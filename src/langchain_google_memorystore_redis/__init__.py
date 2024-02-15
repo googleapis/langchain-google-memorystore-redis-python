@@ -14,13 +14,20 @@
 from .chat_message_history import MemorystoreChatMessageHistory
 from .doc_loader import MemorystoreDocumentLoader
 from .doc_saver import MemorystoreDocumentSaver
-from .vector_store import DistanceStrategy, FLATConfig, HNSWConfig, RedisVectorStore
+from .vector_store import (
+    DistanceStrategy,
+    FLATConfig,
+    HNSWConfig,
+    RedisVectorStore,
+    VectorIndexConfig,
+)
 
 __all__ = [
     "MemorystoreChatMessageHistory",
     "MemorystoreDocumentLoader",
     "MemorystoreDocumentSaver",
     "DistanceStrategy",
+    "VectorIndexConfig",
     "FLATConfig",
     "HNSWConfig",
     "RedisVectorStore",

@@ -15,11 +15,9 @@
 import json
 import logging
 import operator
-import pprint
 import re
 import uuid
 from abc import ABC
-from enum import Enum, auto
 from itertools import zip_longest
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -29,12 +27,9 @@ from langchain_community.vectorstores.utils import (
     DistanceStrategy,
     maximal_marginal_relevance,
 )
-from langchain_core._api import deprecated
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_core.utils import get_from_dict_or_env
-from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
+from langchain_core.vectorstores import VectorStore
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)
@@ -46,7 +41,7 @@ logger.addHandler(handler)
 
 DEFAULT_CONTENT_FIELD = "page_content"
 DEFAULT_VECTOR_FIELD = "vector"
-DEFAULT_DATA_TYPE = "float32"
+DEFAULT_DATA_TYPE = "FLOAT32"
 DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE
 
 
@@ -171,7 +166,7 @@ class HNSWConfig(VectorIndexConfig):
         name: str,
         field_name: Optional[str] = None,
         vector_size: int = DEFAULT_VECTOR_SIZE,
-        distance_strategy: DistanceStrategy = DistanceStrategy.DEFAULT,
+        distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
         initial_cap: int = DEFAULT_INITIAL_CAP,
         m: int = DEFAULT_M,
         ef_construction: int = DEFAULT_EF_CONSTRUCTION,
@@ -378,7 +373,6 @@ class RedisVectorStore(VectorStore):
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
         batch_size: int = 1000,
-        **kwargs: Any,
     ) -> List[str]:
         """
         Adds a collection of texts along with their metadata to a vector store,
@@ -396,10 +390,6 @@ class RedisVectorStore(VectorStore):
             batch_size (int, optional): The number of documents to process in a single batch operation.
                 This parameter helps manage memory and performance when adding a large number of documents.
                 Defaults to 1000.
-            **kwargs (Any): Additional keyword arguments for extended functionality. This includes:
-                - 'keys' or 'ids' (List[str], optional): Custom identifiers for each document. If provided,
-                the length of this list should match the length of `texts`. If not provided, the system
-                will generate unique identifiers.
 
         Returns:
             List[str]: A list containing the unique keys or identifiers for each added document. These keys
@@ -416,11 +406,14 @@ class RedisVectorStore(VectorStore):
 
         # Check if both ids and metadatas are provided and have the same length
         if ids is not None:
-            if len(ids) != len(texts):
+            if len(ids) != len(list(texts)):
                 raise ValueError("The length of 'ids' and 'texts' must be the same.")
 
+        if not metadatas:
+            metadatas = [{} for _ in texts]
+
         if metadatas is not None:
-            if len(metadatas) != len(texts):
+            if len(metadatas) != len(list(texts)):
                 raise ValueError(
                     "The length of 'metadatas' and 'texts' must be the same."
                 )
@@ -430,7 +423,7 @@ class RedisVectorStore(VectorStore):
 
         pipeline = self._client.pipeline(transaction=False)
         for i, bundle in enumerate(
-            zip_longest(ids, texts, embeddings, metadatas), start=1
+            zip(ids, texts, embeddings, metadatas), start=1
         ):
             id, text, embedding, metadata = bundle
             id = self.key_prefix + id
@@ -439,7 +432,7 @@ class RedisVectorStore(VectorStore):
             mapping = {
                 self.content_field: text,
                 self.vector_field: np.array(embedding)
-                .astype(DEFAULT_DATA_TYPE)
+                .astype(DEFAULT_DATA_TYPE.lower())
                 .tobytes(),
             }
 
@@ -528,7 +521,7 @@ class RedisVectorStore(VectorStore):
         )
 
         # Add texts and their corresponding metadata to the instance
-        instance.add_texts(texts, metadatas)
+        instance.add_texts(texts, metadatas, ids)
 
         return instance
 
@@ -588,7 +581,7 @@ class RedisVectorStore(VectorStore):
             "PARAMS",
             2,
             "query_vector",
-            np.array([query_embedding]).astype(DEFAULT_DATA_TYPE).tobytes(),
+            np.array([query_embedding]).astype(DEFAULT_DATA_TYPE.lower()).tobytes(),
             "DIALECT",
             2,
         ]
@@ -614,7 +607,9 @@ class RedisVectorStore(VectorStore):
                 if key == self.content_field:
                     page_content = value.decode(self.encoding)
                 elif key == self.vector_field:
-                    embedding = np.frombuffer(value, dtype=DEFAULT_DATA_TYPE).tolist()
+                    embedding = np.frombuffer(
+                        value, dtype=DEFAULT_DATA_TYPE.lower()
+                    ).tolist()
                 elif key == "distance":
                     distance = float(value.decode(self.encoding))
                 else:

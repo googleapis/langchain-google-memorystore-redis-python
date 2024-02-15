@@ -15,9 +15,11 @@
 import json
 from typing import List, Optional
 
-import redis
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
+from langchain_core.messages import BaseMessage
+from langchain_core.messages import message_to_dict
+from langchain_core.messages import messages_from_dict
+import redis
 
 
 class MemorystoreChatMessageHistory(BaseChatMessageHistory):

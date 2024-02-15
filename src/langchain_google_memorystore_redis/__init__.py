@@ -13,7 +13,11 @@
 # limitations under the License.
 from .chat_message_history import MemorystoreChatMessageHistory
 from .doc_saver import MemorystoreDocumentSaver
-from .vector_store import DistanceStrategy, FLATConfig, HNSWConfig, RedisVectorStore
+from .vector_store import DistanceStrategy
+from .vector_store import FLATConfig
+from .vector_store import HNSWConfig
+from .vector_store import RedisVectorStore
+
 
 __all__ = [
     "MemorystoreChatMessageHistory",

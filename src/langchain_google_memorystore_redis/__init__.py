@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .chat_message_history import MemorystoreChatMessageHistory
+from .doc_loader import MemorystoreDocumentLoader
 from .doc_saver import MemorystoreDocumentSaver
 from .vector_store import DistanceStrategy, FLATConfig, HNSWConfig, RedisVectorStore
 
 __all__ = [
     "MemorystoreChatMessageHistory",
+    "MemorystoreDocumentLoader",
     "MemorystoreDocumentSaver",
     "DistanceStrategy",
     "FLATConfig",

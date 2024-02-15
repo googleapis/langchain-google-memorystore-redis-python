@@ -422,9 +422,7 @@ class RedisVectorStore(VectorStore):
         embeddings = self.embedding_service.embed_documents(list(texts))
 
         pipeline = self._client.pipeline(transaction=False)
-        for i, bundle in enumerate(
-            zip(ids, texts, embeddings, metadatas), start=1
-        ):
+        for i, bundle in enumerate(zip(ids, texts, embeddings, metadatas), start=1):
             id, text, embedding, metadata = bundle
             id = self.key_prefix + id
 

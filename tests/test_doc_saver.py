@@ -16,12 +16,11 @@
 import json
 import os
 
-from langchain_core.documents.base import Document
-from langchain_google_memorystore_redis.doc_saver import (
-    MemorystoreDocumentSaver,
-)
 import pytest
 import redis
+from langchain_core.documents.base import Document
+
+from langchain_google_memorystore_redis.doc_saver import MemorystoreDocumentSaver
 
 
 @pytest.mark.parametrize(

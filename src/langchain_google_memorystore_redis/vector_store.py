@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC
-from itertools import zip_longest
 import json
 import logging
 import operator
 import re
-from typing import Any, Iterable, List, Optional, Tuple
 import uuid
+from abc import ABC
+from itertools import zip_longest
+from typing import Any, Iterable, List, Optional, Tuple
 
-from langchain_community.vectorstores.utils import DistanceStrategy
-from langchain_community.vectorstores.utils import maximal_marginal_relevance
+import numpy as np
+import redis
+from langchain_community.vectorstores.utils import (
+    DistanceStrategy,
+    maximal_marginal_relevance,
+)
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
-import numpy as np
-import redis
-
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)
@@ -81,7 +82,6 @@ class IndexConfig(ABC):
 
 
 class VectorIndexConfig(IndexConfig):
-
     SUPPORTED_DISTANCE_STRATEGIES = {
         DistanceStrategy.COSINE,
         DistanceStrategy.EUCLIDEAN_DISTANCE,
@@ -149,7 +149,6 @@ class VectorIndexConfig(IndexConfig):
 
 
 class HNSWConfig(VectorIndexConfig):
-
     DEFAULT_VECTOR_SIZE = 128
     DEFAULT_INITIAL_CAP = 10000
     DEFAULT_M = 16
@@ -371,7 +370,8 @@ class RedisVectorStore(VectorStore):
         texts: Iterable[str],
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
-        batch_size: int = 1000,
+        batch_size: Optional[int] = 1000,
+        **kwargs: Any,
     ) -> List[str]:
         """
         Adds a collection of texts along with their metadata to a vector store,
@@ -416,6 +416,9 @@ class RedisVectorStore(VectorStore):
                 raise ValueError(
                     "The length of 'metadatas' and 'texts' must be the same."
                 )
+
+        if not batch_size or batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0.")
 
         # Generate embeddings for all documents
         embeddings = self.embeddings_service.embed_documents(list(texts))

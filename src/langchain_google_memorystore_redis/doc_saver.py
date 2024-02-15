@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import json
-from typing import Optional, Sequence, Set, Union
 import uuid
+from typing import Optional, Sequence, Set, Union
 
-from langchain_core.documents.base import Document
 import redis
+from langchain_core.documents.base import Document
 
 
 class MemorystoreDocumentSaver:

@@ -17,15 +17,18 @@ import json
 import os
 import uuid
 
-from langchain_community.embeddings.fake import FakeEmbeddings
-from langchain_core.documents.base import Document
-from langchain_google_memorystore_redis import DistanceStrategy
-from langchain_google_memorystore_redis import HNSWConfig
-from langchain_google_memorystore_redis import RedisVectorStore
-from langchain_google_memorystore_redis import VectorIndexConfig
 import numpy
 import pytest
 import redis
+from langchain_community.embeddings.fake import FakeEmbeddings
+from langchain_core.documents.base import Document
+
+from langchain_google_memorystore_redis import (
+    DistanceStrategy,
+    HNSWConfig,
+    RedisVectorStore,
+    VectorIndexConfig,
+)
 
 
 def test_vector_store_init_index():
@@ -140,7 +143,6 @@ def test_vector_store_add_texts(texts, metadatas, ids):
 
 
 def test_vector_store_knn_query():
-
     texts = [
         "The quick brown fox jumps over the lazy dog",
         "A clever fox outwitted the guard dog to sneak into the farmyard at night",
@@ -183,7 +185,6 @@ def test_vector_store_knn_query():
     ],
 )
 def test_vector_store_range_query(distance_strategy, distance_threshold):
-
     texts = [
         "The quick brown fox jumps over the lazy dog",
         "A clever fox outwitted the guard dog to sneak into the farmyard at night",
@@ -234,7 +235,6 @@ def test_vector_store_range_query(distance_strategy, distance_threshold):
 def check_index_exists(
     client: redis.Redis, index_name: str, index_config: VectorIndexConfig
 ) -> bool:
-
     try:
         index_info = client.ft(index_name).info()
     except:

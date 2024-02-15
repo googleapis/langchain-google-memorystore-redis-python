@@ -16,11 +16,10 @@
 import os
 import uuid
 
-from langchain_core.messages import AIMessage
-from langchain_core.messages import BaseMessage
-from langchain_core.messages import HumanMessage
-from langchain_google_memorystore_redis import MemorystoreChatMessageHistory
 import redis
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+
+from langchain_google_memorystore_redis import MemorystoreChatMessageHistory
 
 
 def test_redis_multiple_sessions() -> None:

@@ -17,18 +17,15 @@ import json
 import os
 import uuid
 
+from langchain_community.embeddings.fake import FakeEmbeddings
+from langchain_core.documents.base import Document
+from langchain_google_memorystore_redis import DistanceStrategy
+from langchain_google_memorystore_redis import HNSWConfig
+from langchain_google_memorystore_redis import RedisVectorStore
+from langchain_google_memorystore_redis import VectorIndexConfig
 import numpy
 import pytest
 import redis
-from langchain_community.embeddings.fake import FakeEmbeddings
-from langchain_core.documents.base import Document
-
-from langchain_google_memorystore_redis import (
-    DistanceStrategy,
-    HNSWConfig,
-    RedisVectorStore,
-    VectorIndexConfig,
-)
 
 
 def test_vector_store_init_index():

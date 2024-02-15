@@ -12,24 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC
+from itertools import zip_longest
 import json
 import logging
 import operator
 import re
-import uuid
-from abc import ABC
-from itertools import zip_longest
 from typing import Any, Iterable, List, Optional, Tuple
+import uuid
 
-import numpy as np
-import redis
-from langchain_community.vectorstores.utils import (
-    DistanceStrategy,
-    maximal_marginal_relevance,
-)
+from langchain_community.vectorstores.utils import DistanceStrategy
+from langchain_community.vectorstores.utils import maximal_marginal_relevance
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+import numpy as np
+import redis
+
 
 # Setting up a basic logger
 logger = logging.getLogger(__name__)

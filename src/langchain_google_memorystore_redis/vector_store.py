@@ -154,6 +154,13 @@ class VectorIndexConfig(IndexConfig):
 
 
 class HNSWConfig(VectorIndexConfig):
+
+    DEFAULT_VECTOR_SIZE = 128
+    DEFAULT_INITIAL_CAP = 10000
+    DEFAULT_M = 16
+    DEFAULT_EF_CONSTRUCTION = 200
+    DEFAULT_EF_RUNTIME = 10
+
     """
     Configuration class for HNSW (Hierarchical Navigable Small World) vector indexes.
     """
@@ -161,13 +168,13 @@ class HNSWConfig(VectorIndexConfig):
     def __init__(
         self,
         name: str,
-        field_name: str | None = None,
-        vector_size: int = 128,
-        distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
-        initial_cap: int = 10000,
-        m: int = 16,
-        ef_construction: int = 200,
-        ef_runtime: int = 10,
+        field_name: Optional[str] = None,
+        vector_size: int = DEFAULT_VECTOR_SIZE,
+        distance_strategy: DistanceStrategy = DistanceStrategy.DEFAULT,
+        initial_cap: int = DEFAULT_INITIAL_CAP,
+        m: int = DEFAULT_M,
+        ef_construction: int = DEFAULT_EF_CONSTRUCTION,
+        ef_runtime: int = DEFAULT_EF_RUNTIME,
     ):
         """
         Initializes the HNSWConfig object.
@@ -185,21 +192,19 @@ class HNSWConfig(VectorIndexConfig):
                 are ranked.
             initial_cap (int): Specifies the initial capacity of the index in terms of
                 the number of vectors it can hold, impacting the initial memory allocation.
-                Defaults to 10000.
             m (int): Determines the maximum number of outgoing edges each node in the
                 index graph can have, directly affecting the graph's connectivity and
-                search performance. Defaults to 16.
+                search performance.
             ef_construction (int): Controls the size of the dynamic candidate list during
                 the construction of the index, influencing the index build time and quality.
-                Defaults to 200.
             ef_runtime (int): Sets the size of the dynamic candidate list during search
-                queries, balancing between search speed and accuracy. Defaults to 10.
+                queries, balancing between search speed and accuracy.
 
         """
         if field_name is None:
             field_name = DEFAULT_VECTOR_FIELD
         super().__init__(
-            name, field_name, "HNSW", distance_strategy, vector_size, "FLOAT32"
+            name, field_name, "HNSW", distance_strategy, vector_size, DEFAULT_DATA_TYPE
         )
         self.initial_cap = initial_cap
         self.m = m
@@ -212,11 +217,13 @@ class FLATConfig(VectorIndexConfig):
     Configuration class for FLAT vector indexes, utilizing brute-force search.
     """
 
+    DEFAULT_VECTOR_SIZE = 128
+
     def __init__(
         self,
         name: str,
-        field_name: str | None = None,
-        vector_size: int = 128,
+        field_name: Optional[str] = None,
+        vector_size: int = DEFAULT_VECTOR_SIZE,
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
     ):
         """
@@ -237,7 +244,7 @@ class FLATConfig(VectorIndexConfig):
         if field_name is None:
             field_name = DEFAULT_VECTOR_FIELD
         super().__init__(
-            name, field_name, "FLAT", distance_strategy, vector_size, "FLOAT32"
+            name, field_name, "FLAT", distance_strategy, vector_size, DEFAULT_DATA_TYPE
         )
 
 
@@ -466,8 +473,8 @@ class RedisVectorStore(VectorStore):
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
-        client: redis.Redis | None = None,
-        index_name: str | None = None,
+        client: Optional[redis.Redis] = None,
+        index_name: Optional[str] = None,
         **kwargs: Any,
     ) -> "RedisVectorStore":
         """

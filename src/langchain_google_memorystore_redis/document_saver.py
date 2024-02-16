@@ -104,16 +104,20 @@ class MemorystoreDocumentSaver:
                 performance when deleting a large number of documents. Defaults
                 to 1000.
         """
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0")
+
         if ids:
             doc_ids = [self._key_prefix + doc_id for doc_id in ids]
-            self._redis.delete(*doc_ids)
+            for i in range(0, len(doc_ids), batch_size):
+                self._redis.delete(*doc_ids[i : i + batch_size])
             return
 
         pipeline = self._redis.pipeline(transaction=False)
-        i = 0
-        for key in self._redis.scan_iter(match=f"{self._key_prefix}*", _type="HASH"):
+        for i, key in enumerate(
+            self._redis.scan_iter(match=f"{self._key_prefix}*", _type="HASH")
+        ):
             pipeline.delete(key)
-            i += 1
             if i % batch_size == 0:
                 pipeline.execute()
         pipeline.execute()

@@ -82,6 +82,46 @@ def test_document_saver_add_documents_one_doc(
     assert client.keys(f"{prefix}*") == []
 
 
+def test_document_saver_add_documents_multiple_docs():
+    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
+    prefix = "multidocs:"
+    content_field = "page_content"
+    saver = MemorystoreDocumentSaver(
+        client=client,
+        key_prefix=prefix,
+        content_field=content_field,
+    )
+    docs = []
+    number_of_docs = 10
+    doc_ids = [f"{i}" for i in range(number_of_docs)]
+    for content in range(number_of_docs):
+        docs.append(
+            Document.construct(
+                page_content=f"{content}",
+                metadata={"metadata": f"meta: {content}"},
+            )
+        )
+    saver = MemorystoreDocumentSaver(
+        client=client,
+        key_prefix=prefix,
+        content_field=content_field,
+    )
+    saver.add_documents(docs, ids=doc_ids)
+
+    for i, doc_id in enumerate(doc_ids):
+        verify_stored_values(
+            client,
+            prefix + doc_id,
+            f"{i}",
+            content_field,
+            {"metadata": f"meta: {i}"},
+        )
+
+    assert len(client.keys(f"{prefix}*")) == number_of_docs
+    saver.delete(ids=doc_ids, batch_size=3)
+    assert client.keys(f"{prefix}*") == []
+
+
 def verify_stored_values(
     client: redis.Redis,
     key: str,

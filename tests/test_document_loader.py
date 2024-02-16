@@ -86,10 +86,6 @@ def test_document_loader_multiple_docs():
     client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
 
     prefix = "multidocs:"
-    # Clean up stored documents with the same prefix
-    for key in client.keys(f"{prefix}*"):
-        client.delete(key)
-
     content_field = "page_content"
     saver = MemorystoreDocumentSaver(
         client=client,
@@ -104,7 +100,6 @@ def test_document_loader_multiple_docs():
                 metadata={"metadata": f"meta: {content}"},
             )
         )
-
     saver.add_documents(docs)
 
     loader = MemorystoreDocumentLoader(
@@ -116,6 +111,7 @@ def test_document_loader_multiple_docs():
     for doc in loader.lazy_load():
         loaded_docs.append(doc)
     assert sorted(loaded_docs, key=lambda d: d.page_content) == docs
+    saver.delete()
 
 
 def get_env_var(key: str, desc: str) -> str:

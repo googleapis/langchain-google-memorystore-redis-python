@@ -77,7 +77,9 @@ def test_document_saver_add_documents_one_doc(
         metadata_to_verify,
     )
 
-    client.delete(prefix + doc_id)
+    assert client.keys(f"{prefix}*") != []
+    saver.delete()
+    assert client.keys(f"{prefix}*") == []
 
 
 def verify_stored_values(

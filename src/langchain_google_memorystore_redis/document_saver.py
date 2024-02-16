@@ -73,19 +73,52 @@ class MemorystoreDocumentSaver:
 
         doc_ids = ids if ids else [str(uuid.uuid4()) for _ in documents]
         doc_ids = [self._key_prefix + doc_id for doc_id in doc_ids]
+        if self._redis.exists(*doc_ids):
+            raise RuntimeError(
+                "At least one of the keys exist(s) in Redis. Please delete the "
+                "existing key(s) or select another prefix to save documents."
+            )
 
         pipeline = self._redis.pipeline(transaction=False)
         for i, doc in enumerate(documents):
             mapping = self._filter_metadata_by_fields(doc.metadata)
             mapping.update({self._content_field: doc.page_content})
 
-            # Remove existing key in Redis to avoid reusing the doc ID.
-            pipeline.delete(doc_ids[i])
             pipeline.hset(doc_ids[i], mapping=mapping)
             if (i + 1) % batch_size == 0 or i == len(documents) - 1:
                 pipeline.execute()
 
-    def _filter_metadata_by_fields(self, metadata: Optional[dict]) -> dict:
+    def delete(
+        self,
+        ids: Optional[Sequence[str]] = None,
+        batch_size: int = 1000,
+    ) -> None:
+        """Delete a list of Documents from Redis.
+
+        Args:
+            ids: The list of suffixes for keys that Redis uses to store the
+                Documents. If not specified, all Documents with the initialized
+                prefix are deleted.
+            batch_size: The number of delete commands to process in a single
+                batch operation. This parameter helps manage memory and
+                performance when deleting a large number of documents. Defaults
+                to 1000.
+        """
+        if ids:
+            doc_ids = [self._key_prefix + doc_id for doc_id in ids]
+            self._redis.delete(*doc_ids)
+            return
+
+        pipeline = self._redis.pipeline(transaction=False)
+        i = 0
+        for key in self._redis.scan_iter(match=f"{self._key_prefix}*", _type="HASH"):
+            pipeline.delete(key)
+            i += 1
+            if i % batch_size == 0:
+                pipeline.execute()
+        pipeline.execute()
+
+    def _filter_metadata_by_fields(self, metadata: Optional[dict] = None) -> dict:
         """Filter metadata fields to be stored in Redis.
 
         Args:

@@ -22,3 +22,9 @@ steps:
     name: python:3.11
     entrypoint: python
     args: ["-m", "pytest"]
+    env:
+      - 'REDIS_URL=$_REDIS_URL'
+
+options:
+  pool:
+    name: '$_WORKER_POOL'

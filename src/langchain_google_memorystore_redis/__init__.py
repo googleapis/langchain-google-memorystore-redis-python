@@ -11,7 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from .chat_message_history import MemorystoreChatMessageHistory
+from .document_loader import MemorystoreDocumentLoader
+from .document_saver import MemorystoreDocumentSaver
+from .vector_store import (
+    DistanceStrategy,
+    FLATConfig,
+    HNSWConfig,
+    RedisVectorStore,
+    VectorIndexConfig,
+)
 
-from langchain_google_memorystore_redis.chat_message_history import MemorystoreChatMessageHistory
-
-__all__ = ["MemorystoreChatMessageHistory"]
+__all__ = [
+    "MemorystoreChatMessageHistory",
+    "MemorystoreDocumentLoader",
+    "MemorystoreDocumentSaver",
+    "DistanceStrategy",
+    "VectorIndexConfig",
+    "FLATConfig",
+    "HNSWConfig",
+    "RedisVectorStore",
+]

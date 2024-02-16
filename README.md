@@ -36,7 +36,7 @@ source <your-env>/bin/activate
 ## Usage
 
 ```python
-from langchain_google_memorystore_redis import MemorystoreVectorstore, MemorystoreLoader, MemorystoreChatMessageHistory
+from langchain_google_memorystore_redis import RedisVectorStore, MemorystoreDocumentLoader, MemorystoreChatMessageHistory
 ```
 
 ## Contributing

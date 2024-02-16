@@ -11,26 +11,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .chat_message_history import MemorystoreChatMessageHistory
-from .loader import MemorystoreDocumentLoader
-from .saver import MemorystoreDocumentSaver
-from .vectorstore import (
-    DistanceStrategy,
-    FLATConfig,
-    HNSWConfig,
-    RedisVectorStore,
-    VectorIndexConfig,
-)
-from .version import __version__
 
-__all__ = [
-    "MemorystoreChatMessageHistory",
-    "MemorystoreDocumentLoader",
-    "MemorystoreDocumentSaver",
-    "DistanceStrategy",
-    "VectorIndexConfig",
-    "FLATConfig",
-    "HNSWConfig",
-    "RedisVectorStore",
-    "__version__",
-]
+__version__ = "0.0.1"

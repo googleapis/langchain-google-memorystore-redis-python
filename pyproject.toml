@@ -1,6 +1,6 @@
 [project]
 name = "langchain-google-memorystore-redis"
-version = "0.0.1"
+dynamic = ["version"]
 description = "LangChain integrations for Google Cloud Memorystore"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -10,6 +10,9 @@ dependencies = [
     "redis>=5.0.0",
     "numpy>=1.21.0",
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "langchain_google_memorystore_redis.version.__version__"}
 
 [project.urls]
 Homepage = "https://github.com/googleapis/langchain-google-memorystore-redis-python"

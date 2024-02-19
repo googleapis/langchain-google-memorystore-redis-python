@@ -20,8 +20,8 @@ import pytest
 import redis
 from langchain_core.documents.base import Document
 
-from langchain_google_memorystore_redis.document_loader import MemorystoreDocumentLoader
-from langchain_google_memorystore_redis.document_saver import MemorystoreDocumentSaver
+from langchain_google_memorystore_redis.loader import MemorystoreDocumentLoader
+from langchain_google_memorystore_redis.saver import MemorystoreDocumentSaver
 
 
 @pytest.mark.parametrize(

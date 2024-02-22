@@ -1,6 +1,6 @@
 # Memorystore for Redis for LangChain
 
-*Description*
+This package contains the [LangChain][langchain] integrations for Memorystore for Redis.
 
 > **🧪 Preview:** This feature is covered by the Pre-GA Offerings Terms of the Google Cloud Terms of Service. Please note that pre-GA products and features might have limited support, and changes to pre-GA products and features might not be compatible with other pre-GA versions. For more information, see the [launch stage descriptions](https://cloud.google.com/products#product-launch-stages)
 
@@ -33,11 +33,60 @@ source <your-env>/bin/activate
 <your-env>/bin/pip install langchain-google-memorystore-redis
 ```
 
-## Usage
+## Vector Store Usage
+
+Use a vector store to store embedded data and perform vector search.
 
 ```python
-from langchain_google_memorystore_redis import RedisVectorStore, MemorystoreDocumentLoader, MemorystoreChatMessageHistory
+from langchain_google_memorystore_redis import RedisVectorStore
+from langchain_community.embeddings.fake import FakeEmbeddings
+
+embeddings = FakeEmbeddings(size=128)
+redis_client = redis.from_url("redis://127.0.0.1:6379")
+
+embeddings_service = VertexAIEmbeddings()
+vectorstore = RedisVectorStore(
+    client=redis_client,
+    index_name="my_vector_index",
+    embeddings=embeddings
+)
 ```
+
+See the full [Vector Store][vectorstore] tutorial.
+
+## Document Loader Usage
+
+Use a document loader to load data as LangChain `Document`s.
+
+```python
+from langchain_google_memorystore_redis import MemorystoreDocumentLoader
+
+
+loader = MemorystoreDocumentLoader(
+    client=redis_client,
+    key_prefix="docs:",
+    content_fields=set(["page_content"]),
+)
+docs = loader.lazy_load()
+```
+
+See the full [Document Loader][loader] tutorial.
+
+## Chat Message History Usage
+
+Use `ChatMessageHistory` to store messages and provide conversation history to LLMs.
+
+```python
+from langchain_google_memorystore_redis import MemorystoreChatMessageHistory
+
+
+history = MemorystoreChatMessageHistory(
+    client=redis_client,
+    session_id="my-session_id"
+)
+```
+
+See the full [Chat Message History][history] tutorial.
 
 ## Contributing
 
@@ -62,3 +111,7 @@ This is not an officially supported Google product.
 [api]: https://console.cloud.google.com/flows/enableapi?apiid=memorystore.googleapis.com
 [auth]: https://googleapis.dev/python/google-api-core/latest/auth.html
 [venv]: https://virtualenv.pypa.io/en/latest/
+[vectorstore]: ./docs/vector_store.ipynb
+[loader]: ./docs/document_loader.ipynb
+[history]: ./docs/chat_message_history.ipynb
+[langchain]: https://github.com/langchain-ai/langchain

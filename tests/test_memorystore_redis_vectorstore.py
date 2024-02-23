@@ -36,7 +36,12 @@ def test_vector_store_init_index():
     index_name = str(uuid.uuid4())
 
     index_config = HNSWConfig(
-        name=index_name, distance_strategy=DistanceStrategy.COSINE, vector_size=128
+        name=index_name,
+        distance_strategy=DistanceStrategy.COSINE,
+        vector_size=128,
+        m=1,
+        ef_construction=2,
+        ef_runtime=3,
     )
 
     assert not check_index_exists(client, index_name, index_config)

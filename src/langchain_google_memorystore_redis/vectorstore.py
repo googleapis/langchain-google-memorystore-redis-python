@@ -321,11 +321,12 @@ class RedisVectorStore(VectorStore):
         command = (
             f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name)} "
             f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
-            f"6 TYPE {index_config.data_type} DIM {index_config.vector_size} "
+            f"14 TYPE {index_config.data_type} DIM {index_config.vector_size} "
             f"DISTANCE_METRIC {index_config.distance_metric} "
+            f"TYPE {index_config.data_type} "
             f"M {index_config.m} "
             f"EF_CONSTRUCTION {index_config.ef_construction} "
-            f"EF_RUNTIME {index_config.ef_construction}"
+            f"EF_RUNTIME {index_config.ef_runtime}"
         )
 
         try:

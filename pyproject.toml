@@ -5,10 +5,14 @@ description = "LangChain integrations for Google Cloud Memorystore"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
+authors = [
+    {name = "Google LLC", email = "googleapis-packages@google.com"}
+]
 dependencies = [
-    "langchain==0.1.1",
-    "redis>=5.0.0",
-    "numpy>=1.21.0",
+    "langchain-core>=0.1.1, <1.0.0",
+    "langchain-community>=0.0.18, <1.0.0",
+    "redis>=5.0.0, <6.0.0",
+    "numpy>=1.21.0, <2.0.0",
 ]
 
 [tool.setuptools.dynamic]
@@ -22,7 +26,6 @@ Changelog = "https://github.com/googleapis/langchain-google-memorystore-redis-py
 
 [project.optional-dependencies]
 test = [
-    "black==23.12.0",
     "black[jupyter]==23.12.0",
     "isort==5.13.2",
     "mypy==1.7.1",

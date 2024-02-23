@@ -36,7 +36,12 @@ def test_vector_store_init_index():
     index_name = str(uuid.uuid4())
 
     index_config = HNSWConfig(
-        name=index_name, distance_strategy=DistanceStrategy.COSINE, vector_size=128
+        name=index_name,
+        distance_strategy=DistanceStrategy.COSINE,
+        vector_size=128,
+        m=1,
+        ef_construction=2,
+        ef_runtime=3,
     )
 
     assert not check_index_exists(client, index_name, index_config)
@@ -134,8 +139,7 @@ def test_vector_store_add_texts(texts, metadatas, ids):
 
     # Verify no extra keys are present
     all_keys = [key.decode("utf-8") for key in client.keys(f"{index_name}*")]
-    # Currently RedisQuery stores the index schema as a key using the index_name
-    assert len(all_keys) == len(returned_ids) + 1, "Found unexpected keys in Redis"
+    assert len(all_keys) == len(returned_ids), "Found unexpected keys in Redis"
 
     # Clena up
     RedisVectorStore.drop_index(client=client, index_name=index_name)
@@ -233,7 +237,7 @@ def test_vector_store_range_query(distance_strategy, distance_threshold):
 
 
 def check_index_exists(
-    client: redis.Redis, index_name: str, index_config: VectorIndexConfig
+    client: redis.Redis, index_name: str, index_config: HNSWConfig
 ) -> bool:
     try:
         index_info = client.ft(index_name).info()
@@ -243,6 +247,18 @@ def check_index_exists(
     return (
         index_info["index_name"] == index_name
         and index_info["index_definition"][1] == b"HASH"
+        and index_info["index_definition"][3][0].decode("utf-8") == index_config.name
+        and index_info["attributes"][0][1].decode("utf-8") == index_config.field_name
+        and index_info["attributes"][0][3].decode("utf-8") == index_config.field_name
+        and index_info["attributes"][0][5] == b"VECTOR"
+        and index_info["attributes"][0][7][3] == index_config.vector_size
+        and index_info["attributes"][0][7][5].decode("utf-8")
+        == index_config.distance_metric
+        and index_info["attributes"][0][7][7].decode("utf-8") == index_config.data_type
+        and index_info["attributes"][0][7][9][1] == b"HNSW"
+        and index_info["attributes"][0][7][9][3] == index_config.m
+        and index_info["attributes"][0][7][9][5] == index_config.ef_construction
+        and index_info["attributes"][0][7][9][7] == index_config.ef_runtime
     )
 
 

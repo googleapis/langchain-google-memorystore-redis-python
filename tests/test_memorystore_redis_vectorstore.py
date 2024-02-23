@@ -245,11 +245,12 @@ def check_index_exists(
         and index_info["index_definition"][3][0].decode("utf-8") == index_config.name
         and index_info["attributes"][0][1].decode("utf-8") == index_config.field_name
         and index_info["attributes"][0][3].decode("utf-8") == index_config.field_name
-        and index_info["attributes"][0][5] == b'VECTOR'
+        and index_info["attributes"][0][5] == b"VECTOR"
         and index_info["attributes"][0][7][3] == index_config.vector_size
-        and index_info["attributes"][0][7][5].decode("utf-8") == index_config.distance_metric
+        and index_info["attributes"][0][7][5].decode("utf-8")
+        == index_config.distance_metric
         and index_info["attributes"][0][7][7].decode("utf-8") == index_config.data_type
-        and index_info["attributes"][0][7][9][1] == b'HNSW'
+        and index_info["attributes"][0][7][9][1] == b"HNSW"
         and index_info["attributes"][0][7][9][3] == index_config.m
         and index_info["attributes"][0][7][9][5] == index_config.ef_construction
         and index_info["attributes"][0][7][9][7] == index_config.ef_runtime

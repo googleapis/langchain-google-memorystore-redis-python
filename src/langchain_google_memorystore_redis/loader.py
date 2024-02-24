@@ -92,7 +92,7 @@ class MemorystoreDocumentLoader(BaseLoader):
 
         return documents
 
-    def _construct_document(self, stored_value) -> Optional[Document]:
+    def _construct_document(self, stored_value) -> Document:
         """Construct a Document from stored value."""
         if not isinstance(stored_value, dict):
             raise ValueError(f"Unexpected stored_value type: {type(stored_value)}")

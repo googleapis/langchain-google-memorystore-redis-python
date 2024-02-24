@@ -68,37 +68,34 @@ class MemorystoreDocumentLoader(BaseLoader):
     def load(self) -> List[Document]:
         """Load all Documents using a Redis pipeline for efficiency."""
         documents = []
-        cursor = 0
-        pipeline = self._redis.pipeline()
+        pipeline = self._redis.pipeline(transaction=False)
+        count = 0
 
-        while True:
-            cursor, keys = self._redis.scan(
-                cursor=cursor, match=f"{self._key_prefix}*", count=self._batch_size
-            )
-            if not keys:
-                break
+        for key in self._redis.scan_iter(
+            match=f"{self._key_prefix}*", count=self._batch_size
+        ):
+            pipeline.hgetall(key)
 
-            for key in keys:
-                pipeline.hgetall(key)
-
-            # Execute the pipeline and reset for next batch
-            results = pipeline.execute()
-
-            for stored_value in results:
-                doc = self._construct_document(stored_value)
-                if doc:
+            count += 1
+            if count % self._batch_size == 0:
+                # Execute the pipeline and reset for next batch
+                results = pipeline.execute()
+                for stored_value in results:
+                    doc = self._construct_document(stored_value)
                     documents.append(doc)
 
-            # Break if no more cursor
-            if cursor == 0:
-                break
+        # Execute the pipeline and reset for next batch
+        results = pipeline.execute()
+        for stored_value in results:
+            doc = self._construct_document(stored_value)
+            documents.append(doc)
 
         return documents
 
     def _construct_document(self, stored_value) -> Optional[Document]:
         """Construct a Document from stored value."""
         if not isinstance(stored_value, dict):
-            return None
+            raise ValueError(f"Unexpected stored_value type: {type(stored_value)}")
         decoded_value = {
             k.decode(self._encoding): v.decode(self._encoding)
             for k, v in stored_value.items()

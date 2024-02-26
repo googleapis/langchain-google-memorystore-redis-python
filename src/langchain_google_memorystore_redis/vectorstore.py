@@ -315,7 +315,7 @@ class RedisVectorStore(VectorStore):
         Initializes a named VectorStore index in Redis with specified configurations.
         """
         if not isinstance(index_config, VectorIndexConfig):
-            raise ValueError("index_config must be an instance of VectorConfig")
+            raise ValueError("index_config must be an instance of VectorIndexConfig")
 
         # Preparing the command string to avoid long lines
         if isinstance(index_config, HNSWConfig):

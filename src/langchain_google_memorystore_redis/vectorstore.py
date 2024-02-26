@@ -318,16 +318,25 @@ class RedisVectorStore(VectorStore):
             raise ValueError("index_config must be an instance of VectorConfig")
 
         # Preparing the command string to avoid long lines
-        command = (
-            f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name)} "
-            f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
-            f"14 TYPE {index_config.data_type} DIM {index_config.vector_size} "
-            f"DISTANCE_METRIC {index_config.distance_metric} "
-            f"TYPE {index_config.data_type} "
-            f"M {index_config.m} "
-            f"EF_CONSTRUCTION {index_config.ef_construction} "
-            f"EF_RUNTIME {index_config.ef_runtime}"
-        )
+        if isinstance(index_config, HNSWConfig):
+            command = (
+                f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name)} "
+                f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
+                f"14 TYPE {index_config.data_type} DIM {index_config.vector_size} "
+                f"DISTANCE_METRIC {index_config.distance_metric} "
+                f"TYPE {index_config.data_type} "
+                f"M {index_config.m} "
+                f"EF_CONSTRUCTION {index_config.ef_construction} "
+                f"EF_RUNTIME {index_config.ef_runtime}"
+            )
+        else:
+            command = (
+                f"FT.CREATE {index_config.name} ON HASH PREFIX 1 {RedisVectorStore.get_key_prefix(index_config.name)} "
+                f"SCHEMA {index_config.field_name} VECTOR {index_config.type} "
+                f"8 TYPE {index_config.data_type} DIM {index_config.vector_size} "
+                f"DISTANCE_METRIC {index_config.distance_metric} "
+                f"TYPE {index_config.data_type} "
+            )
 
         try:
             client.execute_command(command)

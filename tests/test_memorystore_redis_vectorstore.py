@@ -25,6 +25,7 @@ from langchain_core.documents.base import Document
 
 from langchain_google_memorystore_redis import (
     DistanceStrategy,
+    FLATConfig,
     HNSWConfig,
     RedisVectorStore,
     VectorIndexConfig,
@@ -286,7 +287,7 @@ def check_index_exists(
     else:
         return (
             index_info["index_name"] == index_name
-            and index_info["index_definition"][1] == b"FLAT"
+            and index_info["index_definition"][1] == b"HASH"
             and index_info["index_definition"][3][0].decode("utf-8")
             == index_config.name
             and index_info["attributes"][0][1].decode("utf-8")

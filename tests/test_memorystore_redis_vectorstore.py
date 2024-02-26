@@ -31,7 +31,25 @@ from langchain_google_memorystore_redis import (
 )
 
 
-def test_vector_store_init_index():
+def test_vector_store_init_flat_index():
+    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
+    index_name = str(uuid.uuid4())
+
+    index_config = FLATConfig(
+        name=index_name,
+        distance_strategy=DistanceStrategy.COSINE,
+        vector_size=128,
+    )
+
+    assert not check_index_exists(client, index_name, index_config)
+    RedisVectorStore.init_index(client=client, index_config=index_config)
+    assert check_index_exists(client, index_name, index_config)
+    RedisVectorStore.drop_index(client=client, index_name=index_name)
+    assert not check_index_exists(client, index_name, index_config)
+    client.flushall()
+
+
+def test_vector_store_init_hnsw_index():
     client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
     index_name = str(uuid.uuid4())
 
@@ -237,29 +255,52 @@ def test_vector_store_range_query(distance_strategy, distance_threshold):
 
 
 def check_index_exists(
-    client: redis.Redis, index_name: str, index_config: HNSWConfig
+    client: redis.Redis, index_name: str, index_config: VectorIndexConfig
 ) -> bool:
     try:
         index_info = client.ft(index_name).info()
     except:
         return False
 
-    return (
-        index_info["index_name"] == index_name
-        and index_info["index_definition"][1] == b"HASH"
-        and index_info["index_definition"][3][0].decode("utf-8") == index_config.name
-        and index_info["attributes"][0][1].decode("utf-8") == index_config.field_name
-        and index_info["attributes"][0][3].decode("utf-8") == index_config.field_name
-        and index_info["attributes"][0][5] == b"VECTOR"
-        and index_info["attributes"][0][7][3] == index_config.vector_size
-        and index_info["attributes"][0][7][5].decode("utf-8")
-        == index_config.distance_metric
-        and index_info["attributes"][0][7][7].decode("utf-8") == index_config.data_type
-        and index_info["attributes"][0][7][9][1] == b"HNSW"
-        and index_info["attributes"][0][7][9][3] == index_config.m
-        and index_info["attributes"][0][7][9][5] == index_config.ef_construction
-        and index_info["attributes"][0][7][9][7] == index_config.ef_runtime
-    )
+    if isinstance(index_config, HNSWConfig):
+        return (
+            index_info["index_name"] == index_name
+            and index_info["index_definition"][1] == b"HASH"
+            and index_info["index_definition"][3][0].decode("utf-8")
+            == index_config.name
+            and index_info["attributes"][0][1].decode("utf-8")
+            == index_config.field_name
+            and index_info["attributes"][0][3].decode("utf-8")
+            == index_config.field_name
+            and index_info["attributes"][0][5] == b"VECTOR"
+            and index_info["attributes"][0][7][3] == index_config.vector_size
+            and index_info["attributes"][0][7][5].decode("utf-8")
+            == index_config.distance_metric
+            and index_info["attributes"][0][7][7].decode("utf-8")
+            == index_config.data_type
+            and index_info["attributes"][0][7][9][1] == b"HNSW"
+            and index_info["attributes"][0][7][9][3] == index_config.m
+            and index_info["attributes"][0][7][9][5] == index_config.ef_construction
+            and index_info["attributes"][0][7][9][7] == index_config.ef_runtime
+        )
+    else:
+        return (
+            index_info["index_name"] == index_name
+            and index_info["index_definition"][1] == b"FLAT"
+            and index_info["index_definition"][3][0].decode("utf-8")
+            == index_config.name
+            and index_info["attributes"][0][1].decode("utf-8")
+            == index_config.field_name
+            and index_info["attributes"][0][3].decode("utf-8")
+            == index_config.field_name
+            and index_info["attributes"][0][5] == b"VECTOR"
+            and index_info["attributes"][0][7][3] == index_config.vector_size
+            and index_info["attributes"][0][7][5].decode("utf-8")
+            == index_config.distance_metric
+            and index_info["attributes"][0][7][7].decode("utf-8")
+            == index_config.data_type
+            and index_info["attributes"][0][7][9][1] == b"FLAT"
+        )
 
 
 def get_env_var(key: str, desc: str) -> str:

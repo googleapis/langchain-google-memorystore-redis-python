@@ -108,7 +108,7 @@ This is not an officially supported Google product.
 
 [project]: https://console.cloud.google.com/project
 [billing]: https://cloud.google.com/billing/docs/how-to/modify-project#enable_billing_for_a_project
-[api]: https://console.cloud.google.com/flows/enableapi?apiid=sqladmin.googleapis.com
+[api]: https://console.cloud.google.com/flows/enableapi?apiid=memorystore.googleapis.com
 [auth]: https://googleapis.dev/python/google-api-core/latest/auth.html
 [venv]: https://virtualenv.pypa.io/en/latest/
 [loader]: https://github.com/googleapis/langchain-google-memorystore-redis-python/tree/main/docs/document_loader.ipynb

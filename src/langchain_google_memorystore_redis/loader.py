@@ -29,6 +29,7 @@ class MemorystoreDocumentLoader(BaseLoader):
         key_prefix: str,
         content_fields: Set[str],
         metadata_fields: Optional[Set[str]] = None,
+        batch_size: int = 100,
     ):
         """Initializes the Document Loader for Memorystore for Redis.
 
@@ -41,6 +42,7 @@ class MemorystoreDocumentLoader(BaseLoader):
                level keys will be filled in the page_content of the Documents.
             metadata_fields: The metadata fields of the Document that will be
                stored in the Redis. If None, Redis stores all metadata fields.
+            batch_size: Number of keys to load at once from Redis.
         """
 
         self._redis = client
@@ -53,40 +55,69 @@ class MemorystoreDocumentLoader(BaseLoader):
             )
         self._key_prefix = key_prefix if key_prefix else ""
         self._encoding = client.get_encoder().encoding
+        self._batch_size = batch_size
 
     def lazy_load(self) -> Iterator[Document]:
         """Lazy load the Documents and yield them one by one."""
         for key in self._redis.scan_iter(match=f"{self._key_prefix}*", _type="HASH"):
-            doc = {}
             stored_value = self._redis.hgetall(key)
-            if not isinstance(stored_value, dict):
-                raise RuntimeError(f"{key} returns unexpected {stored_value}")
-            decoded_value = {
-                k.decode(self._encoding): v.decode(self._encoding)
-                for k, v in stored_value.items()
-            }
-
-            if len(self._content_fields) == 1:
-                doc["page_content"] = decoded_value[next(iter(self._content_fields))]
-            else:
-                doc["page_content"] = json.dumps(
-                    {k: decoded_value[k] for k in self._content_fields}
-                )
-
-            filtered_fields = (
-                self._metadata_fields if self._metadata_fields else decoded_value.keys()
-            )
-            filtered_fields = filtered_fields - self._content_fields
-            doc["metadata"] = {
-                k: self._decode_if_json_parsable(decoded_value[k])
-                for k in filtered_fields
-            }
-
-            yield Document.construct(**doc)
+            doc = self._construct_document(stored_value)
+            if doc:
+                yield doc
 
     def load(self) -> List[Document]:
-        """Load all Documents at once."""
-        return list(self.lazy_load())
+        """Load all Documents using a Redis pipeline for efficiency."""
+        documents = []
+        pipeline = self._redis.pipeline(transaction=False)
+        count = 0
+
+        for key in self._redis.scan_iter(
+            match=f"{self._key_prefix}*", count=self._batch_size
+        ):
+            pipeline.hgetall(key)
+
+            count += 1
+            if count % self._batch_size == 0:
+                # Execute the pipeline and reset for next batch
+                results = pipeline.execute()
+                for stored_value in results:
+                    doc = self._construct_document(stored_value)
+                    documents.append(doc)
+
+        # Execute the pipeline and reset for next batch
+        results = pipeline.execute()
+        for stored_value in results:
+            doc = self._construct_document(stored_value)
+            documents.append(doc)
+
+        return documents
+
+    def _construct_document(self, stored_value) -> Document:
+        """Construct a Document from stored value."""
+        if not isinstance(stored_value, dict):
+            raise ValueError(f"Unexpected stored_value type: {type(stored_value)}")
+        decoded_value = {
+            k.decode(self._encoding): v.decode(self._encoding)
+            for k, v in stored_value.items()
+        }
+
+        doc = {}
+        if len(self._content_fields) == 1:
+            doc["page_content"] = decoded_value[next(iter(self._content_fields))]
+        else:
+            doc["page_content"] = json.dumps(
+                {k: decoded_value[k] for k in self._content_fields}
+            )
+
+        filtered_fields = (
+            self._metadata_fields if self._metadata_fields else decoded_value.keys()
+        )
+        filtered_fields = filtered_fields - self._content_fields
+        doc["metadata"] = {
+            k: self._decode_if_json_parsable(decoded_value[k]) for k in filtered_fields
+        }
+
+        return Document.construct(**doc)
 
     @staticmethod
     def _decode_if_json_parsable(s: str) -> Union[str, dict]:

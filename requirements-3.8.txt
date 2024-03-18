@@ -1,0 +1,4 @@
+langchain-core==0.1.32
+langchain-community==0.0.28
+redis==5.0.3
+numpy==1.24.4

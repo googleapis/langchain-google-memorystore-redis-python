@@ -27,7 +27,11 @@ branchProtectionRules:
     requiredStatusCheckContexts:
       - "cla/google"
       - "lint"
-      - "integration-test-pr (langchain-redis-query-testing)"
+      - "integration-test-pr-py38 (langchain-redis-query-testing)"
+      - "integration-test-pr-py39 (langchain-redis-query-testing)"
+      - "integration-test-pr-py310 (langchain-redis-query-testing)"
+      - "integration-test-pr-py311 (langchain-redis-query-testing)"
+      - "integration-test-pr-py312 (langchain-redis-query-testing)"
       - "conventionalcommits.org"
       - "header-check"
     # - Add required status checks like presubmit tests

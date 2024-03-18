@@ -51,6 +51,8 @@ ignoredFiles:
   - "*.md"
 substitutions:
   _VERSION: "3.8"
+  _WORKER_POOL: ""
+  _REDIS_URL: ""
 ```
 
 Use `gcloud builds triggers import --source=trigger.yaml` create triggers via the command line

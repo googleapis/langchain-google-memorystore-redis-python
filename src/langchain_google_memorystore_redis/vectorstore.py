@@ -558,14 +558,16 @@ class RedisVectorStore(VectorStore):
         Args:
             query_embedding (List[float]): A list of floats representing the embedding
                 vector of the query for similarity search.
-            k (int, optional): The number of nearest neighbors to retrieve.  Defaults to 4.
+            k (int, optional): The number of nearest neighbors to retrieve. Defaults to 4.
             **kwargs (Any): Additional keyword arguments allowing for customization of
                 the search operation. Key options include:
+
                 - 'distance_threshold' (float, optional): A threshold value for filtering
-                    results based on their distance or score.  If not specified directly,
-                    it may use 'score_threshold' if provided.
+                  results based on their distance or score. If not specified directly,
+                  it may use 'score_threshold' if provided.
+
                 - 'distance_strategy' (str, optional): Strategy to apply when comparing
-                    distances or scores. Uses a default strategy if not specified.
+                  distances or scores. Uses a default strategy if not specified.
 
         Returns:
             List[Tuple[Document, float, List[float]]]: A list of tuples, each containing
@@ -573,9 +575,9 @@ class RedisVectorStore(VectorStore):
             embedding vector. The Document object includes content and metadata.
 
         Note:
-            - The function dynamically adjusts its behavior based on the presence and values
-                of keyword arguments. For instance, if a 'distance_threshold' is provided,
-                only results meeting this threshold are returned.
+            The function dynamically adjusts its behavior based on the presence and values
+            of keyword arguments. For instance, if a 'distance_threshold' is provided,
+            only results meeting this threshold are returned.
         """
 
         distance_threshold = kwargs.get(

@@ -28,7 +28,7 @@ steps:
 
 .. _Select or create a Cloud Platform project.: https://console.cloud.google.com/project
 .. _Enable billing for your project.: https://cloud.google.com/billing/docs/how-to/modify-project#enable_billing_for_a_project
-.. _Enable the Google Memorystore for Redis API.: https://console.cloud.google.com/flows/enableapi?apiid=memorystore-redis.googleapis.com
+.. _Enable the Google Memorystore for Redis API.: https://console.cloud.google.com/flows/enableapi?apiid=memorystore.googleapis.com
 .. _Setup Authentication.: https://googleapis.dev/python/google-api-core/latest/auth.html
 
 Installation
@@ -74,16 +74,14 @@ Use a vector store to store embedded data and perform vector search.
 .. code-block:: python
 
     from langchain_google_memorystore_redis import RedisVectorStore
-    from langchain_community.embeddings.fake import FakeEmbeddings
 
-    embeddings = FakeEmbeddings(size=128)
     redis_client = redis.from_url("redis://127.0.0.1:6379")
 
     embeddings_service = VertexAIEmbeddings(model_name="textembedding-gecko@003")
     vectorstore = RedisVectorStore(
         client=redis_client,
         index_name="my_vector_index",
-        embeddings=embeddings
+        embeddings=embeddings_service
     )
 
 See the full `Vector Store`_ tutorial.

@@ -1,0 +1,4 @@
+assign_issues:
+  - googleapis/langchain-memorystore
+assign_prs:
+  - googleapis/langchain-memorystore

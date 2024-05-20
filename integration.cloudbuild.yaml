@@ -30,7 +30,7 @@ steps:
   - id: Run integration tests
     name: python:${_VERSION}
     entrypoint: python
-    args: ["-m", "pytest"]
+    args: ["-m", "pytest", "--cov=langchain_google_memorystore_redis", "--cov-config=.coveragerc", "tests/"]
     env:
       - "REDIS_URL=$_REDIS_URL"
 

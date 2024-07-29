@@ -1,4 +1,4 @@
-langchain-core==0.2.12
+langchain-core==0.2.24
 langchain-community==0.2.6
 redis==5.0.7
 numpy===1.24.4; python_version <= "3.8"

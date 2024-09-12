@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import redis
 from langchain_core.chat_history import BaseChatMessageHistory
@@ -25,14 +25,14 @@ class MemorystoreChatMessageHistory(BaseChatMessageHistory):
 
     def __init__(
         self,
-        client: redis.Redis,
+        client: Union[redis.Redis, redis.cluster.RedisCluster],
         session_id: str,
         ttl: Optional[int] = None,
     ):
         """Initializes the chat message history for Memorystore for Redis.
 
         Args:
-            client: A redis.Redis client object.
+            client: A redis.Redis or redis.cluster.RedisCluster client object.
             session_id: A string that uniquely identifies the chat history.
             ttl: Specifies the time in seconds after which the session will
                 expire and be eliminated from the Redis instance since the most

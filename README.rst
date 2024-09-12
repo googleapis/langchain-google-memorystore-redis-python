@@ -84,6 +84,21 @@ Use a vector store to store embedded data and perform vector search.
         embeddings=embeddings_service
     )
 
+You can also use a clustered client:
+
+.. code-block:: python
+
+    from langchain_google_memorystore_redis import RedisVectorStore
+
+    redis_client = redis.cluster.RedisCluster.from_url("redis://127.0.0.1:6379")
+
+    embeddings_service = VertexAIEmbeddings(model_name="textembedding-gecko@003")
+    vectorstore = RedisVectorStore(
+        client=redis_client,
+        index_name="my_vector_index",
+        embeddings=embeddings_service
+    )
+
 See the full `Vector Store`_ tutorial.
 
 .. _`Vector Store`: https://github.com/googleapis/langchain-google-memorystore-redis-python/blob/main/docs/vector_store.ipynb

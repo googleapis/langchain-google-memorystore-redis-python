@@ -24,6 +24,23 @@ from langchain_google_memorystore_redis.loader import MemorystoreDocumentLoader
 from langchain_google_memorystore_redis.saver import MemorystoreDocumentSaver
 
 
+def get_env_var(key: str, desc: str) -> str:
+    v = os.environ.get(key)
+    if v is None:
+        raise ValueError(f"Must set env var {key} to: {desc}")
+    return v
+
+
+@pytest.mark.parametrize(
+    "client",
+    [
+        redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance")),
+        redis.cluster.RedisCluster.from_url(
+            get_env_var("REDIS_CLUSTER_URL", "URL of the Redis cluster")
+        ),
+    ],
+    ids=["redis_standalone", "redis_cluster"],
+)
 @pytest.mark.parametrize(
     "page_content,metadata,content_field,metadata_fields",
     [
@@ -48,10 +65,8 @@ from langchain_google_memorystore_redis.saver import MemorystoreDocumentSaver
     ],
 )
 def test_document_loader_one_doc(
-    page_content, metadata, content_field, metadata_fields
+    client, page_content, metadata, content_field, metadata_fields
 ):
-    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
-
     prefix = "prefix:"
     saver = MemorystoreDocumentSaver(
         client=client,
@@ -82,9 +97,17 @@ def test_document_loader_one_doc(
     client.delete(prefix + doc_id)
 
 
-def test_document_loader_multiple_docs():
-    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
-
+@pytest.mark.parametrize(
+    "client",
+    [
+        redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance")),
+        redis.cluster.RedisCluster.from_url(
+            get_env_var("REDIS_CLUSTER_URL", "URL of the Redis cluster")
+        ),
+    ],
+    ids=["redis_standalone", "redis_cluster"],
+)
+def test_document_loader_multiple_docs(client):
     prefix = "multidocs:"
     content_field = "page_content"
     saver = MemorystoreDocumentSaver(

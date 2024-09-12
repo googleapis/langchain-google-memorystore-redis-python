@@ -19,7 +19,7 @@ import re
 import uuid
 from abc import ABC
 from itertools import zip_longest
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import redis
@@ -245,7 +245,7 @@ class FLATConfig(VectorIndexConfig):
 class RedisVectorStore(VectorStore):
     def __init__(
         self,
-        client: redis.Redis,
+        client: Union[redis.Redis, redis.cluster.RedisCluster],
         index_name: str,
         embeddings: Embeddings,
         content_field: str = DEFAULT_CONTENT_FIELD,
@@ -255,7 +255,7 @@ class RedisVectorStore(VectorStore):
         Initialize a RedisVectorStore instance.
 
         Args:
-            client (redis.Redis): The Redis client instance to be used for database
+            client (redis.Redis or redis.cluster.RedisCluster): The Redis client instance to be used for database
                 operations, providing connectivity and command execution against the
                 Redis instance.
             index_name (str): The name assigned to the vector index within Redis. This
@@ -274,7 +274,7 @@ class RedisVectorStore(VectorStore):
                 when adding new documents to the store and when retrieving or searching
                 documents based on their vector embeddings. Defaults to 'vector'.
         """
-        if not isinstance(client, redis.Redis):
+        if not isinstance(client, (redis.Redis, redis.cluster.RedisCluster)):
             raise ValueError(
                 "A Redis 'client' must be provided to initialize RedisVectorStore"
             )
@@ -310,7 +310,7 @@ class RedisVectorStore(VectorStore):
             return False
 
     @staticmethod
-    def init_index(client: redis.Redis, index_config: IndexConfig):
+    def init_index(client: Union[redis.Redis, redis.cluster.RedisCluster], index_config: IndexConfig):
         """
         Initializes a named VectorStore index in Redis with specified configurations.
         """
@@ -339,7 +339,10 @@ class RedisVectorStore(VectorStore):
             )
 
         try:
-            client.execute_command(command)
+            if isinstance(client, redis.Redis):
+                client.execute_command(command)
+            else:
+                client.execute_command(command, target_nodes=redis.cluster.RedisCluster.DEFAULT_NODE)
         except redis.exceptions.ResponseError as e:
             if re.match(r"Redis module key \w+ already exists", str(e)):
                 logger.info("Index already exists, skipping creation.")
@@ -352,7 +355,7 @@ class RedisVectorStore(VectorStore):
         # for FT.INFO in the client library.
 
     @staticmethod
-    def drop_index(client: redis.Redis, index_name: str, index_only: bool = True):
+    def drop_index(client: Union[redis.Redis, redis.cluster.RedisCluster], index_name: str, index_only: bool = True):
         """
         Drops an index from the Redis database. Optionally, it can also delete
         the documents associated with the index.
@@ -376,7 +379,10 @@ class RedisVectorStore(VectorStore):
             raise ValueError("Not supported")
 
         command = f"FT.DROPINDEX {index_name} {'DD' if not index_only else ''}".strip()
-        client.execute_command(command)
+        if isinstance(client, redis.Redis):
+            client.execute_command(command)
+        else:
+            client.execute_command(command, target_nodes=redis.cluster.RedisCluster.DEFAULT_NODE)
 
     def add_texts(
         self,
@@ -481,7 +487,7 @@ class RedisVectorStore(VectorStore):
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
-        client: Optional[redis.Redis] = None,
+        client: Optional[Union[redis.Redis, redis.cluster.RedisCluster]] = None,
         index_name: Optional[str] = None,
         **kwargs: Any,
     ) -> "RedisVectorStore":
@@ -499,7 +505,7 @@ class RedisVectorStore(VectorStore):
                 each text document.  If not provided, the system will generate unique identifiers
                 for each document. If provided, the length of this list should match the length
                 of `texts`.
-            client (redis.Redis): The Redis client instance to be used for database
+            client (redis.Redis or redis.cluster.RedisCluster): The Redis client instance to be used for database
                 operations, providing connectivity and command execution against the
                 Redis instance.
             index_name (str): The name assigned to the vector index within Redis. This
@@ -512,7 +518,7 @@ class RedisVectorStore(VectorStore):
                 the embeddings of the provided texts, along with their associated metadata.
         """
 
-        if not isinstance(client, redis.Redis):
+        if not isinstance(client, (redis.Redis, redis.cluster.RedisCluster)):
             raise ValueError(
                 "A 'client' must be provided to initialize RedisVectorStore"
             )
@@ -598,7 +604,10 @@ class RedisVectorStore(VectorStore):
             2,
         ]
 
-        initial_results = self._client.execute_command(*query_args)
+        if isinstance(self._client, redis.Redis):
+            initial_results = self._client.execute_command(*query_args)
+        else:
+            initial_results = self._client.execute_command(*query_args, target_nodes=redis.cluster.RedisCluster.RANDOM)
 
         logger.info(f"{int((len(initial_results)-1)/2)} documents returned by Redis")
 

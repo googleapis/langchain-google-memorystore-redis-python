@@ -16,15 +16,31 @@
 import os
 import uuid
 
+import pytest
 import redis
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from langchain_google_memorystore_redis import MemorystoreChatMessageHistory
 
 
-def test_redis_multiple_sessions() -> None:
-    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
+def get_env_var(key: str, desc: str) -> str:
+    v = os.environ.get(key)
+    if v is None:
+        raise ValueError(f"Must set env var {key} to: {desc}")
+    return v
 
+
+@pytest.mark.parametrize(
+    "client",
+    [
+        redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance")),
+        redis.cluster.RedisCluster.from_url(
+            get_env_var("REDIS_CLUSTER_URL", "URL of the Redis cluster")
+        ),
+    ],
+    ids=["redis_standalone", "redis_cluster"],
+)
+def test_redis_multiple_sessions(client) -> None:
     session_id1 = uuid.uuid4().hex
     history1 = MemorystoreChatMessageHistory(
         client=client,
@@ -58,10 +74,3 @@ def test_redis_multiple_sessions() -> None:
     history2.clear()
     assert len(history1.messages) == 0
     assert len(history2.messages) == 0
-
-
-def get_env_var(key: str, desc: str) -> str:
-    v = os.environ.get(key)
-    if v is None:
-        raise ValueError(f"Must set env var {key} to: {desc}")
-    return v

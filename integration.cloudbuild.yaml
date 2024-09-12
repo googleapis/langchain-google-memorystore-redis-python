@@ -36,6 +36,7 @@ steps:
       ]
     env:
       - "REDIS_URL=$_REDIS_URL"
+      - "REDIS_CLUSTER_URL=$_REDIS_CLUSTER_URL"
 
 substitutions:
   _VERSION: "3.8"

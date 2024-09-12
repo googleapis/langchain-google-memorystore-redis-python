@@ -25,7 +25,7 @@ class MemorystoreDocumentLoader(BaseLoader):
 
     def __init__(
         self,
-        client: redis.Redis,
+        client: Union[redis.Redis, redis.cluster.RedisCluster],
         key_prefix: str,
         content_fields: Set[str],
         metadata_fields: Optional[Set[str]] = None,
@@ -34,7 +34,7 @@ class MemorystoreDocumentLoader(BaseLoader):
         """Initializes the Document Loader for Memorystore for Redis.
 
         Args:
-            client: A redis.Redis client object.
+            client: A redis.Redis or redis.cluster.RedisCluster client object.
             key_prefix: A prefix for the keys to store Documents in Redis.
             content_fields: The set of fields of the hash that Redis uses to
                store the page_content of the Document. If more than one field

@@ -25,7 +25,7 @@ class MemorystoreDocumentSaver:
 
     def __init__(
         self,
-        client: redis.Redis,
+        client: Union[redis.Redis, redis.cluster.RedisCluster],
         key_prefix: str,
         content_field: str,
         metadata_fields: Optional[Set[str]] = None,
@@ -33,7 +33,7 @@ class MemorystoreDocumentSaver:
         """Initializes the Document Saver for Memorystore for Redis.
 
         Args:
-            client: A redis.Redis client object.
+            client: A redis.Redis or redis.cluster.RedisCluster client object.
             key_prefix: A prefix for the keys to store Documents in Redis.
             content_field: The field of the hash that Redis uses to store the
                 page_content of the Document.

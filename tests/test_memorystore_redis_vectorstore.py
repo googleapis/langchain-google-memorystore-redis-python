@@ -15,8 +15,8 @@
 
 import json
 import os
-from typing import Union
 import uuid
+from typing import Union
 
 import numpy
 import pytest

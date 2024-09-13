@@ -19,8 +19,8 @@ from typing import Union
 
 import pytest
 import redis
-from langchain_core.documents.base import Document
 import redis.cluster
+from langchain_core.documents.base import Document
 
 from langchain_google_memorystore_redis.saver import MemorystoreDocumentSaver
 

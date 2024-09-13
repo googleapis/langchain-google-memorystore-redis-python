@@ -53,6 +53,7 @@ substitutions:
   _VERSION: "3.8"
   _WORKER_POOL: ""
   _REDIS_URL: ""
+  _REDIS_CLUSTER_URL: ""
 ```
 
 Use `gcloud builds triggers import --source=trigger.yaml` to create triggers via the command line
@@ -68,7 +69,7 @@ Use `gcloud builds triggers import --source=trigger.yaml` to create triggers via
 * Run integration test:
 
     ```bash
-    gcloud builds submit --config integration.cloudbuild.yaml --region us-central1 --substitutions=_WORKER_POOL="path-to-worker-pool",_REDIS_URL="redis://..."
+    gcloud builds submit --config integration.cloudbuild.yaml --region us-central1 --substitutions=_WORKER_POOL="path-to-worker-pool",_REDIS_URL="redis://...",_REDIS_CLUSTER_URL="redis://..."
     ```
 
 #### Trigger

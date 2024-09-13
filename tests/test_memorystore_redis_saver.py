@@ -15,14 +15,42 @@
 
 import json
 import os
+from typing import Union
 
 import pytest
 import redis
+import redis.cluster
 from langchain_core.documents.base import Document
 
 from langchain_google_memorystore_redis.saver import MemorystoreDocumentSaver
 
 
+def get_env_var(key: str, desc: str) -> str:
+    v = os.environ.get(key)
+    if v is None:
+        raise ValueError(f"Must set env var {key} to: {desc}")
+    return v
+
+
+def get_all_keys(prefix: str, client: Union[redis.Redis, redis.cluster.RedisCluster]):
+    if isinstance(client, redis.Redis):
+        return client.keys(f"{prefix}*")
+    else:
+        return client.keys(
+            f"{prefix}*", target_nodes=redis.cluster.RedisCluster.ALL_NODES
+        )
+
+
+@pytest.mark.parametrize(
+    "client",
+    [
+        redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance")),
+        redis.cluster.RedisCluster.from_url(
+            get_env_var("REDIS_CLUSTER_URL", "URL of the Redis cluster")
+        ),
+    ],
+    ids=["redis_standalone", "redis_cluster"],
+)
 @pytest.mark.parametrize(
     "page_content,metadata,content_field,metadata_fields",
     [
@@ -47,9 +75,8 @@ from langchain_google_memorystore_redis.saver import MemorystoreDocumentSaver
     ],
 )
 def test_document_saver_add_documents_one_doc(
-    page_content, metadata, content_field, metadata_fields
+    client, page_content, metadata, content_field, metadata_fields
 ):
-    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
     prefix = "prefix:"
 
     saver = MemorystoreDocumentSaver(
@@ -77,13 +104,22 @@ def test_document_saver_add_documents_one_doc(
         metadata_to_verify,
     )
 
-    assert client.keys(f"{prefix}*") != []
+    assert get_all_keys(prefix, client) != []
     saver.delete()
-    assert client.keys(f"{prefix}*") == []
+    assert get_all_keys(prefix, client) == []
 
 
-def test_document_saver_add_documents_multiple_docs():
-    client = redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance"))
+@pytest.mark.parametrize(
+    "client",
+    [
+        redis.from_url(get_env_var("REDIS_URL", "URL of the Redis instance")),
+        redis.cluster.RedisCluster.from_url(
+            get_env_var("REDIS_CLUSTER_URL", "URL of the Redis cluster")
+        ),
+    ],
+    ids=["redis_standalone", "redis_cluster"],
+)
+def test_document_saver_add_documents_multiple_docs(client):
     prefix = "multidocs:"
     content_field = "page_content"
     saver = MemorystoreDocumentSaver(
@@ -117,13 +153,13 @@ def test_document_saver_add_documents_multiple_docs():
             {"metadata": f"meta: {i}"},
         )
 
-    assert len(client.keys(f"{prefix}*")) == number_of_docs
+    assert len(get_all_keys(prefix, client)) == number_of_docs
     saver.delete(ids=doc_ids, batch_size=3)
-    assert client.keys(f"{prefix}*") == []
+    assert get_all_keys(prefix, client) == []
 
 
 def verify_stored_values(
-    client: redis.Redis,
+    client: Union[redis.Redis, redis.cluster.RedisCluster],
     key: str,
     page_content: str,
     content_field: str,
@@ -151,10 +187,3 @@ def is_json_parsable(s: str) -> bool:
         return True
     except ValueError:
         return False
-
-
-def get_env_var(key: str, desc: str) -> str:
-    v = os.environ.get(key)
-    if v is None:
-        raise ValueError(f"Must set env var {key} to: {desc}")
-    return v

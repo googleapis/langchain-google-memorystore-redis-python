@@ -187,4 +187,3 @@ def is_json_parsable(s: str) -> bool:
         return True
     except ValueError:
         return False
-

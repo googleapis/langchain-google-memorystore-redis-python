@@ -188,9 +188,3 @@ def is_json_parsable(s: str) -> bool:
     except ValueError:
         return False
 
-
-def get_env_var(key: str, desc: str) -> str:
-    v = os.environ.get(key)
-    if v is None:
-        raise ValueError(f"Must set env var {key} to: {desc}")
-    return v

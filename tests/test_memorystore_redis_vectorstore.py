@@ -383,10 +383,3 @@ def check_index_exists(
         )
     else:
         return get_key_val_from_arr(algorithm, b"name") == b"FLAT"
-
-
-def get_env_var(key: str, desc: str) -> str:
-    v = os.environ.get(key)
-    if v is None:
-        raise ValueError(f"Must set env var {key} to: {desc}")
-    return v

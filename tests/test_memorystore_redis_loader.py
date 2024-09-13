@@ -135,10 +135,3 @@ def test_document_loader_multiple_docs(client):
         loaded_docs.append(doc)
     assert sorted(loaded_docs, key=lambda d: d.page_content) == docs
     saver.delete()
-
-
-def get_env_var(key: str, desc: str) -> str:
-    v = os.environ.get(key)
-    if v is None:
-        raise ValueError(f"Must set env var {key} to: {desc}")
-    return v

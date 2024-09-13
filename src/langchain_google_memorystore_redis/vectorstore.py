@@ -310,7 +310,10 @@ class RedisVectorStore(VectorStore):
             return False
 
     @staticmethod
-    def init_index(client: Union[redis.Redis, redis.cluster.RedisCluster], index_config: IndexConfig):
+    def init_index(
+        client: Union[redis.Redis, redis.cluster.RedisCluster],
+        index_config: IndexConfig,
+    ):
         """
         Initializes a named VectorStore index in Redis with specified configurations.
         """
@@ -342,7 +345,9 @@ class RedisVectorStore(VectorStore):
             if isinstance(client, redis.Redis):
                 client.execute_command(command)
             else:
-                client.execute_command(command, target_nodes=redis.cluster.RedisCluster.DEFAULT_NODE)
+                client.execute_command(
+                    command, target_nodes=redis.cluster.RedisCluster.DEFAULT_NODE
+                )
         except redis.exceptions.ResponseError as e:
             if re.match(r"Redis module key \w+ already exists", str(e)):
                 logger.info("Index already exists, skipping creation.")
@@ -355,7 +360,11 @@ class RedisVectorStore(VectorStore):
         # for FT.INFO in the client library.
 
     @staticmethod
-    def drop_index(client: Union[redis.Redis, redis.cluster.RedisCluster], index_name: str, index_only: bool = True):
+    def drop_index(
+        client: Union[redis.Redis, redis.cluster.RedisCluster],
+        index_name: str,
+        index_only: bool = True,
+    ):
         """
         Drops an index from the Redis database. Optionally, it can also delete
         the documents associated with the index.
@@ -382,7 +391,9 @@ class RedisVectorStore(VectorStore):
         if isinstance(client, redis.Redis):
             client.execute_command(command)
         else:
-            client.execute_command(command, target_nodes=redis.cluster.RedisCluster.DEFAULT_NODE)
+            client.execute_command(
+                command, target_nodes=redis.cluster.RedisCluster.DEFAULT_NODE
+            )
 
     def add_texts(
         self,
@@ -607,7 +618,9 @@ class RedisVectorStore(VectorStore):
         if isinstance(self._client, redis.Redis):
             initial_results = self._client.execute_command(*query_args)
         else:
-            initial_results = self._client.execute_command(*query_args, target_nodes=redis.cluster.RedisCluster.RANDOM)
+            initial_results = self._client.execute_command(
+                *query_args, target_nodes=redis.cluster.RedisCluster.RANDOM
+            )
 
         logger.info(f"{int((len(initial_results)-1)/2)} documents returned by Redis")
 

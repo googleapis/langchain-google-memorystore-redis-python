@@ -44,7 +44,9 @@ def get_all_keys(prefix: str, client: Union[redis.Redis, redis.cluster.RedisClus
     if isinstance(client, redis.Redis):
         return client.keys(f"{prefix}*")
     else:
-        return client.keys(f"{prefix}*", target_nodes=redis.cluster.RedisCluster.ALL_NODES)
+        return client.keys(
+            f"{prefix}*", target_nodes=redis.cluster.RedisCluster.ALL_NODES
+        )
 
 
 @pytest.mark.parametrize(
@@ -318,11 +320,13 @@ def test_vector_store_range_query(client, distance_strategy, distance_threshold)
 def get_key_val_from_arr(arr, key: bytes):
     for i in range(len(arr)):
         if arr[i] == key and i + 1 < len(arr):
-            return arr[i+1]
+            return arr[i + 1]
 
 
 def check_index_exists(
-    client: Union[redis.Redis, redis.cluster.RedisCluster], index_name: str, index_config: VectorIndexConfig
+    client: Union[redis.Redis, redis.cluster.RedisCluster],
+    index_name: str,
+    index_config: VectorIndexConfig,
 ) -> bool:
     try:
         index_info = client.ft(index_name).info()
@@ -341,18 +345,30 @@ def check_index_exists(
     if len(attributes) != 1:
         return False
     attribute = attributes[0]
-    if get_key_val_from_arr(attribute, b"identifier").decode("utf-8") != index_config.field_name:
+    if (
+        get_key_val_from_arr(attribute, b"identifier").decode("utf-8")
+        != index_config.field_name
+    ):
         return False
-    if get_key_val_from_arr(attribute, b"attribute").decode("utf-8") != index_config.field_name:
+    if (
+        get_key_val_from_arr(attribute, b"attribute").decode("utf-8")
+        != index_config.field_name
+    ):
         return False
     if get_key_val_from_arr(attribute, b"type") != b"VECTOR":
         return False
     index = get_key_val_from_arr(attribute, b"index")
     if get_key_val_from_arr(index, b"dimensions") != index_config.vector_size:
         return False
-    if get_key_val_from_arr(index, b"distance_metric").decode("utf-8") != index_config.distance_metric:
+    if (
+        get_key_val_from_arr(index, b"distance_metric").decode("utf-8")
+        != index_config.distance_metric
+    ):
         return False
-    if get_key_val_from_arr(index, b"data_type").decode("utf-8") != index_config.data_type:
+    if (
+        get_key_val_from_arr(index, b"data_type").decode("utf-8")
+        != index_config.data_type
+    ):
         return False
     algorithm = get_key_val_from_arr(index, b"algorithm")
 
@@ -360,13 +376,13 @@ def check_index_exists(
         return (
             get_key_val_from_arr(algorithm, b"name") == b"HNSW"
             and get_key_val_from_arr(algorithm, b"m") == index_config.m
-            and get_key_val_from_arr(algorithm, b"ef_construction") == index_config.ef_construction
-            and get_key_val_from_arr(algorithm, b"ef_runtime") == index_config.ef_runtime
+            and get_key_val_from_arr(algorithm, b"ef_construction")
+            == index_config.ef_construction
+            and get_key_val_from_arr(algorithm, b"ef_runtime")
+            == index_config.ef_runtime
         )
     else:
-        return (
-            get_key_val_from_arr(algorithm, b"name") == b"FLAT"
-        )
+        return get_key_val_from_arr(algorithm, b"name") == b"FLAT"
 
 
 def get_env_var(key: str, desc: str) -> str:

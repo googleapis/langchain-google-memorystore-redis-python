@@ -31,11 +31,14 @@ def get_env_var(key: str, desc: str) -> str:
         raise ValueError(f"Must set env var {key} to: {desc}")
     return v
 
+
 def get_all_keys(prefix: str, client: Union[redis.Redis, redis.cluster.RedisCluster]):
     if isinstance(client, redis.Redis):
         return client.keys(f"{prefix}*")
     else:
-        return client.keys(f"{prefix}*", target_nodes=redis.cluster.RedisCluster.ALL_NODES)
+        return client.keys(
+            f"{prefix}*", target_nodes=redis.cluster.RedisCluster.ALL_NODES
+        )
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/googleapis/langchain-google-memorystore-redis-python/compare/v0.2.0...v0.3.0) (2024-09-23)
+
+
+### Features
+
+* Add support for clustered Memorystore products. ([#94](https://github.com/googleapis/langchain-google-memorystore-redis-python/issues/94)) ([396ad18](https://github.com/googleapis/langchain-google-memorystore-redis-python/commit/396ad18a43edb8742087518488b8e00890eab8a3))
+
+
+### Documentation
+
+* Update README.rst title size ([#91](https://github.com/googleapis/langchain-google-memorystore-redis-python/issues/91)) ([203352f](https://github.com/googleapis/langchain-google-memorystore-redis-python/commit/203352f042d45a20c03852d8d98c3339567d0c6f))
+
 ## [0.2.0](https://github.com/googleapis/langchain-google-memorystore-redis-python/compare/v0.1.0...v0.2.0) (2024-05-02)
 
 

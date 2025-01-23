@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "LangChain integrations for Google Cloud Memorystore"
 readme = "README.rst"
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     {name = "Google LLC", email = "googleapis-packages@google.com"}
 ]
@@ -19,7 +19,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -56,7 +56,7 @@ target-version = ['py38']
 profile = "black"
 
 [tool.mypy]
-python_version = 3.8
+python_version = 3.9
 warn_unused_configs = true
 
 exclude = [

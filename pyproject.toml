@@ -38,7 +38,7 @@ Changelog = "https://github.com/googleapis/langchain-google-memorystore-redis-py
 [project.optional-dependencies]
 test = [
     "black[jupyter]==24.8.0",
-    "isort==5.13.2",
+    "isort==6.0.0",
     "mypy==1.11.1",
     "pytest-asyncio==0.23.8",
     "pytest==8.3.2",

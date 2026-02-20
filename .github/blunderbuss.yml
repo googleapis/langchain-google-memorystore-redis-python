@@ -1,4 +1,4 @@
 assign_issues:
-  - googleapis/langchain-memorystore
+  - googleapis/langchain-memorystore-team
 assign_prs:
-  - googleapis/langchain-memorystore
+  - googleapis/langchain-memorystore-team
